@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code to Amazon Q Developer — Migration Skill</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-alt: #1e2230;
+      --border: #2a2e3b;
+      --text: #e1e4eb;
+      --text-muted: #8b92a5;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+      --accent-red: #ef4444;
+      --accent-pink: #ec4899;
+      --tag-bg: rgba(59,130,246,0.12);
+      --tag-border: rgba(59,130,246,0.25);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+
+    .version-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(168,85,247,0.15);
+      color: var(--accent-purple);
+      border: 1px solid rgba(168,85,247,0.3);
+    }
+
+    /* Sections */
+    section {
+      margin-bottom: 2.5rem;
+    }
+
+    section > h2 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 1.5rem 0 0.6rem;
+    }
+
+    p { font-size: 0.92rem; margin-bottom: 0.75rem; color: var(--text); }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .card h3 { margin-top: 0; }
+
+    /* Flow diagram */
+    .flow-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+
+    .flow-source {
+      display: inline-block;
+      background: rgba(59,130,246,0.15);
+      border: 2px solid rgba(59,130,246,0.4);
+      border-radius: 10px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      margin-bottom: 1rem;
+    }
+
+    .flow-arrow {
+      display: block;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      margin: 0.5rem 0;
+    }
+
+    .flow-classifier {
+      display: inline-block;
+      background: rgba(245,158,11,0.15);
+      border: 2px solid rgba(245,158,11,0.35);
+      border-radius: 10px;
+      padding: 0.5rem 1.25rem;
+      font-weight: 600;
+      color: var(--accent-amber);
+      margin-bottom: 1rem;
+    }
+
+    .flow-targets {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-top: 0.5rem;
+    }
+
+    .flow-target {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+
+    .ft-rules { background: rgba(34,197,94,0.12); color: var(--accent-green); border: 1px solid rgba(34,197,94,0.3); }
+    .ft-prompts { background: rgba(6,182,212,0.12); color: var(--accent-cyan); border: 1px solid rgba(6,182,212,0.3); }
+    .ft-mcp { background: rgba(168,85,247,0.12); color: var(--accent-purple); border: 1px solid rgba(168,85,247,0.3); }
+    .ft-agents { background: rgba(236,72,153,0.12); color: var(--accent-pink); border: 1px solid rgba(236,72,153,0.3); }
+    .ft-report { background: rgba(239,68,68,0.12); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.3); }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 0.75rem 0 1rem;
+    }
+
+    th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    td {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid rgba(42,46,59,0.5);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    /* Code blocks */
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.82rem;
+      background: rgba(59,130,246,0.1);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      color: var(--accent-cyan);
+    }
+
+    pre {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      margin: 0.75rem 0 1rem;
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: var(--text);
+    }
+
+    /* Usage examples */
+    .usage-example {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .usage-prompt {
+      font-style: italic;
+      color: var(--accent-amber);
+      font-size: 0.92rem;
+      margin-bottom: 0.75rem;
+      padding-left: 1rem;
+      border-left: 3px solid var(--accent-amber);
+    }
+
+    .usage-output pre {
+      margin-bottom: 0;
+    }
+
+    /* Tags */
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .tag-direct { background: rgba(34,197,94,0.12); color: var(--accent-green); border: 1px solid rgba(34,197,94,0.25); }
+    .tag-partial { background: rgba(245,158,11,0.12); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.25); }
+    .tag-none { background: rgba(239,68,68,0.1); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.2); }
+
+    /* Checklist */
+    .checklist {
+      list-style: none;
+      margin: 0.5rem 0;
+    }
+
+    .checklist li {
+      position: relative;
+      padding-left: 1.6rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .checklist li::before {
+      position: absolute;
+      left: 0;
+      font-size: 0.85rem;
+    }
+
+    .check-done::before { content: '\2705'; }
+    .check-partial::before { content: '\1F7E1'; }
+    .check-skip::before { content: '\274C'; }
+
+    /* File tree */
+    .file-tree {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.82rem;
+      line-height: 1.8;
+      margin: 0.75rem 0 1rem;
+      color: var(--text-muted);
+    }
+
+    .file-tree .dir { color: var(--accent-blue); }
+    .file-tree .file { color: var(--text); }
+    .file-tree .comment { color: var(--text-muted); font-style: italic; }
+
+    /* Limitations */
+    .limitation {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(42,46,59,0.5);
+    }
+
+    .limitation:last-child { border-bottom: none; }
+
+    .limitation-icon {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      background: rgba(239,68,68,0.12);
+      color: var(--accent-red);
+      border: 1px solid rgba(239,68,68,0.25);
+    }
+
+    .limitation-content h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.15rem;
+    }
+
+    .limitation-content p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 1rem;
+    }
+
+    footer a { color: var(--accent-blue); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 640px) {
+      body { padding: 1rem 0.75rem; }
+      header h1 { font-size: 1.5rem; }
+      .flow-targets { flex-direction: column; align-items: center; }
+      .card { padding: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Claude Code &rarr; Amazon Q Developer</h1>
+    <p class="subtitle">Migration Skill &mdash; Automatically convert Claude configurations to Amazon Q equivalents</p>
+    <span class="version-badge">v0.1.0 &middot; March 2026</span>
+  </header>
+
+  <!-- Purpose -->
+  <section>
+    <h2>Purpose</h2>
+    <p>Engineers who build skills, rules, and workflows in Claude Code often need those same guardrails in Amazon Q Developer &mdash; especially in AWS-heavy enterprise environments. This skill automates that translation instead of requiring manual rewriting.</p>
+    <p>Claude Code uses a <strong>unified model</strong> (single SKILL.md with everything). Amazon Q uses a <strong>component model</strong> (content split across rules, prompts, agents, and MCP config). This skill reads Claude sources, classifies each content block, and routes it to the correct Amazon Q component.</p>
+  </section>
+
+  <!-- How It Works -->
+  <section>
+    <h2>How It Works</h2>
+
+    <div class="flow-diagram">
+      <div class="flow-source">Claude Source File<br><small>CLAUDE.md &middot; SKILL.md &middot; settings.json</small></div>
+      <span class="flow-arrow">&darr;</span>
+      <div class="flow-classifier">Content Classifier</div>
+      <span class="flow-arrow">&darr;</span>
+      <div class="flow-targets">
+        <span class="flow-target ft-rules">.amazonq/rules/</span>
+        <span class="flow-target ft-prompts">~/.aws/amazonq/prompts/</span>
+        <span class="flow-target ft-mcp">.amazonq/default.json</span>
+        <span class="flow-target ft-agents">Custom Agents</span>
+        <span class="flow-target ft-report">MIGRATION_REPORT.md</span>
+      </div>
+    </div>
+
+    <h3>Classification Signals</h3>
+    <table>
+      <thead><tr><th>Signal in Source</th><th>Routes To</th></tr></thead>
+      <tbody>
+        <tr><td>"Always", "Never", "Prefer", "Must"</td><td><span class="tag tag-direct">Rules</span></td></tr>
+        <tr><td>Project structure, architecture, conventions</td><td><span class="tag tag-direct">Rules</span></td></tr>
+        <tr><td>Numbered steps, "First&hellip; then&hellip;"</td><td><span class="tag tag-direct">Prompts</span></td></tr>
+        <tr><td>Output format templates, search patterns</td><td><span class="tag tag-direct">Prompts</span></td></tr>
+        <tr><td>Server URLs, endpoints, auth tokens</td><td><span class="tag tag-partial">MCP Config</span></td></tr>
+        <tr><td>Agent definitions, permissions</td><td><span class="tag tag-partial">Agent Config</span></td></tr>
+        <tr><td>Hooks, subagents, Claude-specific</td><td><span class="tag tag-none">Report Only</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Usage -->
+  <section>
+    <h2>Usage</h2>
+
+    <div class="usage-example">
+      <h3>Port a Single Skill</h3>
+      <div class="usage-prompt">"Port my udemy-scanner skill to Amazon Q"</div>
+      <div class="file-tree">
+        <span class="dir">amazonq-export/</span><br>
+        &nbsp;&nbsp;<span class="dir">.amazonq/rules/</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">udemy-scanner-rules.md</span> <span class="comment">&larr; declarative content</span><br>
+        &nbsp;&nbsp;<span class="dir">prompts/</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">udemy-scanner.md</span> <span class="comment">&larr; procedural workflows</span><br>
+        &nbsp;&nbsp;<span class="file">MIGRATION_REPORT.md</span>
+      </div>
+    </div>
+
+    <div class="usage-example">
+      <h3>Port an Entire Project</h3>
+      <div class="usage-prompt">"Convert this project's Claude setup to Amazon Q"</div>
+      <div class="file-tree">
+        <span class="dir">amazonq-export/</span><br>
+        &nbsp;&nbsp;<span class="dir">.amazonq/</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">rules/</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">project-context.md</span> <span class="comment">&larr; from CLAUDE.md</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">udemy-scanner-rules.md</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">claude-to-amazonq-rules.md</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">default.json</span> <span class="comment">&larr; MCP servers</span><br>
+        &nbsp;&nbsp;<span class="dir">prompts/</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">udemy-scanner.md</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">claude-to-amazonq.md</span><br>
+        &nbsp;&nbsp;<span class="file">MIGRATION_REPORT.md</span>
+      </div>
+    </div>
+
+    <div class="usage-example">
+      <h3>Port Global Config</h3>
+      <div class="usage-prompt">"Port my global Claude config to Amazon Q"</div>
+      <p style="font-size:0.88rem; color:var(--text-muted);">Reads <code>~/.claude/CLAUDE.md</code> and <code>~/.claude/skills/*</code>, generates global Amazon Q equivalents.</p>
+    </div>
+
+    <div class="usage-example">
+      <h3>Direct Mode</h3>
+      <div class="usage-prompt">"Port my Claude skills to Amazon Q directly &mdash; write in-place"</div>
+      <p style="font-size:0.88rem; color:var(--text-muted);">Writes directly to <code>.amazonq/</code> and <code>~/.aws/amazonq/prompts/</code> instead of the staging directory.</p>
+    </div>
+  </section>
+
+  <!-- Concept Mapping -->
+  <section>
+    <h2>Concept Mapping</h2>
+
+    <h3>Configuration Files</h3>
+    <table>
+      <thead><tr><th>Claude Code</th><th>Amazon Q Developer</th><th>Mapping</th></tr></thead>
+      <tbody>
+        <tr><td><code>CLAUDE.md</code> (project)</td><td><code>.amazonq/rules/*.md</code></td><td><span class="tag tag-direct">Direct</span></td></tr>
+        <tr><td><code>~/.claude/CLAUDE.md</code> (global)</td><td><code>~/.aws/amazonq/prompts/*.md</code></td><td><span class="tag tag-direct">Direct</span></td></tr>
+        <tr><td><code>settings.json</code> (MCP)</td><td><code>.amazonq/default.json</code></td><td><span class="tag tag-direct">Direct</span></td></tr>
+        <tr><td><code>.claude-plugin/plugin.json</code></td><td>Custom agent JSON</td><td><span class="tag tag-partial">Partial</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Features</h3>
+    <table>
+      <thead><tr><th>Claude Feature</th><th>Amazon Q Equivalent</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>CLAUDE.md instructions</td><td>Rules (auto-loaded)</td><td><span class="tag tag-direct">Direct</span></td></tr>
+        <tr><td>Skills (SKILL.md)</td><td>Rules + Prompts (split)</td><td><span class="tag tag-direct">Good</span></td></tr>
+        <tr><td>MCP servers</td><td>MCP servers</td><td><span class="tag tag-direct">Direct</span></td></tr>
+        <tr><td>Plugins</td><td>Custom agents</td><td><span class="tag tag-partial">Partial</span></td></tr>
+        <tr><td>Hooks</td><td>No equivalent</td><td><span class="tag tag-none">None</span></td></tr>
+        <tr><td>Subagents</td><td>No equivalent</td><td><span class="tag tag-none">None</span></td></tr>
+        <tr><td>Slash commands</td><td><code>@prompt-name</code></td><td><span class="tag tag-partial">Similar</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Migration Report -->
+  <section>
+    <h2>Migration Report</h2>
+    <p>Every conversion generates <code>MIGRATION_REPORT.md</code> with four sections:</p>
+
+    <div class="card">
+      <h3>Example Report</h3>
+      <h4 style="color:var(--accent-green); margin-top:1rem; font-size:0.85rem;">Successfully Ported</h4>
+      <ul class="checklist">
+        <li class="check-done">CLAUDE.md &rarr; .amazonq/rules/project-context.md</li>
+        <li class="check-done">skills/udemy-scanner &rarr; rules + prompts</li>
+        <li class="check-done">MCP: context7 server &rarr; .amazonq/default.json</li>
+      </ul>
+
+      <h4 style="color:var(--accent-amber); margin-top:1rem; font-size:0.85rem;">Partial &mdash; Manual Adjustment Needed</h4>
+      <ul class="checklist">
+        <li class="check-partial">MCP config: 2 of 3 servers ported (see TODO comments)</li>
+      </ul>
+
+      <h4 style="color:var(--accent-red); margin-top:1rem; font-size:0.85rem;">Not Portable &mdash; Workarounds Suggested</h4>
+      <ul class="checklist">
+        <li class="check-skip">PreToolUse hooks &rarr; Suggested: use custom agent <code>tools.denied</code></li>
+        <li class="check-skip">Subagent orchestration &rarr; Suggested: create multiple specialised agents</li>
+      </ul>
+
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-top:1rem;">Inline <code>&lt;!-- TODO --&gt;</code> comments are injected in generated files where manual work is needed.</p>
+    </div>
+  </section>
+
+  <!-- Skill Architecture -->
+  <section>
+    <h2>Skill Architecture</h2>
+    <div class="file-tree">
+      <span class="dir">skills/claude-to-amazonq/</span><br>
+      &nbsp;&nbsp;<span class="file">SKILL.md</span> <span class="comment">&larr; Core conversion workflow (~1,800 words)</span><br>
+      &nbsp;&nbsp;<span class="dir">references/</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">mapping-guide.md</span> <span class="comment">&larr; Complete concept mapping</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">rules-template.md</span> <span class="comment">&larr; .amazonq/rules/ format + examples</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">prompt-template.md</span> <span class="comment">&larr; Prompt library format + examples</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">custom-agent-template.md</span> <span class="comment">&larr; Custom agent JSON schema</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">mcp-config-template.md</span> <span class="comment">&larr; MCP config translation guide</span>
+    </div>
+  </section>
+
+  <!-- Limitations -->
+  <section>
+    <h2>Known Limitations</h2>
+    <div class="card">
+      <div class="limitation">
+        <div class="limitation-icon">!</div>
+        <div class="limitation-content">
+          <h4>Hooks</h4>
+          <p>Claude's PreToolUse/PostToolUse/Stop hooks have no Amazon Q equivalent. Partial workaround via custom agent <code>tools.denied</code> for restriction-type hooks.</p>
+        </div>
+      </div>
+      <div class="limitation">
+        <div class="limitation-icon">!</div>
+        <div class="limitation-content">
+          <h4>Subagents</h4>
+          <p>Claude can spawn parallel subagents. Amazon Q agents are single-threaded. Workaround: create multiple specialised agents.</p>
+        </div>
+      </div>
+      <div class="limitation">
+        <div class="limitation-icon">!</div>
+        <div class="limitation-content">
+          <h4>Auto-Triggering</h4>
+          <p>Claude skills trigger automatically based on description matching. Amazon Q prompts must be explicitly invoked with <code>@prompt-name</code>.</p>
+        </div>
+      </div>
+      <div class="limitation">
+        <div class="limitation-icon">!</div>
+        <div class="limitation-content">
+          <h4>Progressive Disclosure</h4>
+          <p>Claude loads metadata &rarr; SKILL.md &rarr; references incrementally. Amazon Q loads all rules simultaneously.</p>
+        </div>
+      </div>
+      <div class="limitation">
+        <div class="limitation-icon">!</div>
+        <div class="limitation-content">
+          <h4>Bundled Scripts</h4>
+          <p>Claude skills can bundle executable scripts. Amazon Q has no equivalent. Scripts must be committed to the repo separately.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Claude Code to Amazon Q Developer Migration Skill &middot; v0.1.0 &middot; March 2026</p>
+    <p><a href="https://github.com/Darent74">github.com/Darent74</a></p>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Claude Code local config
+CLAUDE.md
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
