@@ -64,6 +64,175 @@ Code users, Kiro is interesting because:
 
 ---
 
+## For Users New to Kiro: How the Mental Model Differs
+
+If you've been using Claude Code and are considering Kiro, this section walks through the
+key differences in plain language. The goal is to help you draw your own comparisons so
+the migration feels familiar rather than foreign.
+
+### Where Your Project Rules Live
+
+In Claude Code, you have one file — `CLAUDE.md` — sitting in your project root. Everything
+goes in there: coding standards, architecture rules, workflow instructions, security policies.
+Claude reads the whole thing every time you start a conversation.
+
+Kiro takes a different approach. Instead of one big file, you create **multiple smaller
+files** in a `.kiro/steering/` directory. Each file focuses on one topic — say, your
+TypeScript conventions, or your security policies, or your deployment workflow.
+
+The advantage is that Kiro lets you control **when** each file gets loaded:
+
+- **Always** — loaded every time, just like CLAUDE.md. Use this for your core project
+  rules that always apply.
+- **File match** — only loaded when you're working with certain files. If you have rules
+  that only matter for React components, you can set them to load only when `.tsx` files
+  are involved. This keeps your context cleaner.
+- **Manual** — only loaded when you explicitly ask for it by typing `/` or `#steering-name`
+  in chat. Good for step-by-step workflows you don't need every conversation.
+- **Auto** — loaded when Kiro thinks the steering file is relevant to your current request,
+  based on a description you write. Similar to how Claude Code skills auto-trigger.
+
+When you migrate, this skill splits your single CLAUDE.md into multiple steering files and
+picks the most appropriate loading mode for each one.
+
+### How Memory and Lessons Work
+
+Claude Code has a persistent memory system — files in `~/.claude/` that remember things
+across conversations. Many users also keep a `tasks/lessons.md` file to track gotchas
+and patterns they've learned the hard way, so Claude doesn't repeat the same mistakes.
+
+Kiro doesn't have a built-in memory system in the same sense. Instead, it achieves the
+same outcome through **global steering files**. These live in `~/.kiro/steering/` and
+apply to every project you open, just like Claude's global `~/.claude/CLAUDE.md`.
+
+Here's how your Claude Code patterns translate:
+
+| What You Do in Claude Code | How to Do It in Kiro |
+|---|---|
+| `~/.claude/CLAUDE.md` with global rules | Create files in `~/.kiro/steering/` — each rule set gets its own file |
+| `tasks/lessons.md` with project gotchas | Create `.kiro/steering/lessons.md` with `inclusion: always` |
+| `~/.claude/tasks/lessons.md` with global lessons | Create `~/.kiro/steering/lessons.md` (global) |
+| Claude memory files (`~/.claude/memory/`) | No direct equivalent — put durable rules in global steering instead |
+| "Remember to always do X" | Write it in a steering file — Kiro reads it every time |
+| `tasks/todo.md` for task tracking | Kiro has **specs** — a built-in `tasks.md` with real-time status tracking |
+
+The key difference: Claude Code separates "memory" (things it remembers about you) from
+"rules" (instructions it follows). Kiro combines both into steering files. If you want
+Kiro to remember something, you write it in a steering file. If you want it to follow a
+rule, same place.
+
+### Security Rules and Safety Guardrails
+
+Rules like "never expose API keys in chat", "never commit .env files", or "always use
+parameterised queries" work the same way in both tools — you write them as instructions
+and the AI follows them.
+
+In Claude Code, you put these in your CLAUDE.md:
+
+```markdown
+## Security
+- Never expose API keys, passwords, or secrets in chat output
+- Never commit .env files or credentials
+- Always use parameterised queries — never concatenate SQL strings
+```
+
+In Kiro, you'd create a `.kiro/steering/security.md` file:
+
+```markdown
+---
+inclusion: always
+---
+
+# Security Policies
+
+- Never expose API keys, passwords, or secrets in chat output
+- Never commit .env files or credentials
+- Always use parameterised queries — never concatenate SQL strings
+```
+
+The content is identical — you're just adding a small header that tells Kiro to always
+load this file. The migration skill does this conversion automatically.
+
+Where Kiro goes further than Claude Code on security:
+
+- **Per-agent tool restrictions** — In Claude Code, you set permissions globally in
+  `settings.json` (allow these tools, deny those). In Kiro, you can set restrictions
+  **per agent**. Your "code review" agent might only be allowed to read files, while
+  your "deployment" agent can run shell commands but only specific ones. This is done
+  through `allowedTools` and `toolsSettings` in agent configs.
+
+- **Command-level restrictions** — Kiro agents can specify exactly which shell commands
+  are allowed or denied. Instead of blanket "allow Bash" or "deny Bash", you can say
+  "allow `npm test` and `npm run build` but deny `rm -rf` and `chmod`." Claude Code's
+  hook system can achieve similar results but requires more setup.
+
+- **MCP Registry Governance** (enterprise feature) — Administrators can control which
+  MCP servers are approved for use across the organisation. Claude Code has no equivalent
+  — any user can configure any MCP server.
+
+- **Model Governance** (enterprise feature) — Administrators can control which AI models
+  agents are allowed to use. Useful for compliance environments where only certain models
+  are approved.
+
+When migrating, the skill converts your Claude Code permission blocks into Kiro's
+per-agent restrictions and flags any security rules that could be strengthened using
+Kiro's more granular controls. These appear in the "Enhancement Opportunities" section
+of the migration report.
+
+### Skills: Almost Identical
+
+This is the easiest part of the migration. Kiro adopted the same skill format as Claude
+Code — a `SKILL.md` file with YAML frontmatter (`name` and `description`) and a markdown
+body, with optional `references/` and `scripts/` subdirectories.
+
+If you've built skills for Claude Code, they'll work in Kiro with minimal changes:
+
+1. **Tool names** need updating (`Read` becomes `read`, `Bash` becomes `shell`, etc.)
+2. **File location** changes from wherever you stored them to `.kiro/skills/<name>/`
+3. **Auto-triggering** works the same way — Kiro matches your skill's `description`
+   against the user's request, just like Claude Code does
+
+The migration skill handles all three automatically.
+
+### Hooks: Same Events, Different Format
+
+Claude Code hooks fire on events like `PreToolUse` (before a tool runs), `PostToolUse`
+(after a tool runs), and `Stop` (when the agent finishes). You use them to block dangerous
+commands, validate output, or trigger follow-up actions.
+
+Kiro has the same event model with the same event names (just in camelCase: `preToolUse`,
+`postToolUse`, `stop`). The difference is where they're configured:
+
+- **Claude Code** — hooks are defined in `settings.json` or plugin hook files
+- **Kiro CLI** — hooks are defined inside agent configuration files, scoped to that agent
+- **Kiro IDE** — hooks can also be created through the UI for file-event triggers (like
+  "when a file is saved, run the linter"), which is something Claude Code can't do
+
+The migration skill converts your Claude Code hooks into Kiro CLI hook format, translating
+event names and tool matchers automatically.
+
+### Subagents: Now Full Custom Agents
+
+In Claude Code, you spawn subagents to handle parallel tasks — research, code review,
+testing — each with its own context window. They're ephemeral and defined inline.
+
+Kiro takes this further with **custom agents** in `.kiro/agents/`. These are persistent,
+named agents with their own:
+
+- System prompt (what the agent does)
+- Tool access (which tools it can use)
+- MCP servers (which external services it connects to)
+- Resources (which files, skills, and knowledge bases it can reference)
+- Hooks (lifecycle events specific to this agent)
+- Keyboard shortcut (quick-switch in the IDE)
+
+When migrating, your Claude Code subagent definitions become Kiro custom agent files.
+The migration skill generates the full agent config and flags Kiro-only features you
+could add (like knowledge bases or per-tool path restrictions) in the enhancement
+opportunities section.
+
+---
+
 ## The Problem
 
 Claude Code uses a **unified model**: a single `SKILL.md` contains declarative rules,
