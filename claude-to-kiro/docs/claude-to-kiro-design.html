@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code to Kiro — Migration Skill Design Document</title>
+<style>
+  /* Reset & Base */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; font-size: 16px; }
+
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* Sidebar / TOC */
+  nav.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background: #16162a;
+    border-right: 1px solid #2d2d44;
+    overflow-y: auto;
+    padding: 1.5rem 1rem;
+    z-index: 100;
+    transition: transform 0.3s ease;
+  }
+
+  nav.sidebar h2 {
+    color: #4fc3f7;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #2d2d44;
+  }
+
+  nav.sidebar ul { list-style: none; }
+
+  nav.sidebar li { margin-bottom: 0.25rem; }
+
+  nav.sidebar a {
+    color: #b0b0c8;
+    text-decoration: none;
+    font-size: 0.85rem;
+    display: block;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  nav.sidebar a:hover {
+    background: #2d2d44;
+    color: #4fc3f7;
+  }
+
+  nav.sidebar li.indent { padding-left: 1rem; }
+
+  /* Mobile toggle */
+  .nav-toggle {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 200;
+    background: #4fc3f7;
+    color: #1a1a2e;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  /* Main content */
+  main {
+    margin-left: 280px;
+    max-width: 900px;
+    padding: 2.5rem 3rem 4rem;
+    width: calc(100% - 280px);
+  }
+
+  /* Headings */
+  h1 {
+    color: #4fc3f7;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 2px solid #4fc3f7;
+    padding-bottom: 0.5rem;
+  }
+
+  h2 {
+    color: #4fc3f7;
+    font-size: 1.5rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #2d2d44;
+  }
+
+  h3 {
+    color: #81d4fa;
+    font-size: 1.2rem;
+    margin-top: 1.8rem;
+    margin-bottom: 0.75rem;
+  }
+
+  h4 {
+    color: #b3e5fc;
+    font-size: 1.05rem;
+    margin-top: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Blockquote (used for subtitle) */
+  blockquote {
+    background: #2d2d44;
+    border-left: 4px solid #4fc3f7;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0 1.5rem;
+    border-radius: 0 6px 6px 0;
+    color: #c0c0d8;
+    font-size: 0.95rem;
+  }
+
+  blockquote strong { color: #e0e0e0; }
+
+  /* Paragraphs */
+  p { margin-bottom: 1rem; }
+
+  /* Links */
+  a { color: #4fc3f7; }
+
+  /* Horizontal rules */
+  hr {
+    border: none;
+    border-top: 1px solid #2d2d44;
+    margin: 2rem 0;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  th {
+    background: #2a2a48;
+    color: #4fc3f7;
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #3a3a5c;
+    font-weight: 600;
+  }
+
+  td {
+    padding: 0.55rem 0.8rem;
+    border: 1px solid #3a3a5c;
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td { background: #22223a; }
+  tr:nth-child(odd) td { background: #1e1e34; }
+  tr:hover td { background: #2d2d50; }
+
+  td strong { color: #e0e0e0; }
+
+  /* Lists */
+  ul, ol {
+    margin: 0.5rem 0 1rem 1.5rem;
+  }
+
+  li { margin-bottom: 0.35rem; }
+
+  li ul, li ol { margin-top: 0.35rem; margin-bottom: 0.35rem; }
+
+  /* Inline code */
+  code {
+    background: #2d2d44;
+    color: #ce93d8;
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.88em;
+  }
+
+  /* Code blocks */
+  pre {
+    background: #2d2d44;
+    border: 1px solid #3a3a5c;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1rem 0 1.5rem;
+    line-height: 1.5;
+  }
+
+  pre code {
+    background: none;
+    color: #e0e0e0;
+    padding: 0;
+    font-size: 0.85rem;
+  }
+
+  /* Syntax highlighting (inline CSS classes) */
+  .kw { color: #c792ea; }   /* keyword */
+  .str { color: #c3e88d; }  /* string */
+  .cm { color: #6a6a8a; }   /* comment */
+  .key { color: #4fc3f7; }  /* YAML/JSON key */
+  .val { color: #f78c6c; }  /* value/number */
+  .fn { color: #82aaff; }   /* function */
+  .op { color: #89ddff; }   /* operator/punctuation */
+  .cb { color: #ffcb6b; }   /* checkbox/status */
+
+  /* ASCII diagrams */
+  pre.diagram code {
+    color: #81d4fa;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  /* Strong */
+  strong { color: #e8e8f0; }
+
+  /* Emphasis */
+  em { color: #b0b0c8; font-style: italic; }
+
+  /* Footer */
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #2d2d44;
+    text-align: center;
+    color: #6a6a8a;
+    font-size: 0.85rem;
+  }
+
+  footer strong { color: #4fc3f7; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    nav.sidebar {
+      transform: translateX(-100%);
+      width: 260px;
+    }
+
+    nav.sidebar.open {
+      transform: translateX(0);
+    }
+
+    .nav-toggle { display: block; }
+
+    main {
+      margin-left: 0;
+      width: 100%;
+      padding: 2rem 1.5rem 3rem;
+    }
+  }
+
+  @media (max-width: 600px) {
+    main { padding: 1.5rem 1rem 2rem; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+    table { font-size: 0.8rem; }
+    th, td { padding: 0.4rem 0.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<button class="nav-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')" aria-label="Toggle navigation">&#9776; TOC</button>
+
+<nav class="sidebar">
+  <h2>Table of Contents</h2>
+  <ul>
+    <li><a href="#purpose">Purpose</a></li>
+    <li><a href="#why-kiro">Why Kiro?</a></li>
+    <li><a href="#mental-model">Mental Model Differences</a></li>
+    <li class="indent"><a href="#project-rules">Where Your Project Rules Live</a></li>
+    <li class="indent"><a href="#memory-lessons">Memory and Lessons</a></li>
+    <li class="indent"><a href="#security">Security Rules</a></li>
+    <li class="indent"><a href="#skills-identical">Skills: Almost Identical</a></li>
+    <li class="indent"><a href="#hooks-events">Hooks: Same Events</a></li>
+    <li class="indent"><a href="#subagents">Subagents to Custom Agents</a></li>
+    <li><a href="#the-problem">The Problem</a></li>
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li class="indent"><a href="#content-classification">Content Classification</a></li>
+    <li class="indent"><a href="#steering-classification">Steering Inclusion Modes</a></li>
+    <li class="indent"><a href="#tool-translation">Tool Name Translation</a></li>
+    <li><a href="#conversion-workflows">Conversion Workflows</a></li>
+    <li class="indent"><a href="#wf1">WF1: Single Skill</a></li>
+    <li class="indent"><a href="#wf2">WF2: Full Project</a></li>
+    <li class="indent"><a href="#wf3">WF3: Global Config</a></li>
+    <li class="indent"><a href="#wf4">WF4: Plugin-to-Power</a></li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#migration-report">Migration Report</a></li>
+    <li><a href="#worked-example">Worked Example</a></li>
+    <li><a href="#concept-mapping">Complete Concept Mapping</a></li>
+    <li><a href="#skill-architecture">Skill Architecture</a></li>
+    <li><a href="#limitations">Limitations</a></li>
+    <li><a href="#relationship">Relationship to claude-to-amazonq</a></li>
+    <li><a href="#future">Future Enhancements</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<h1>Claude Code to Kiro &mdash; Migration Skill</h1>
+
+<blockquote>
+  <strong>Design Document</strong> | Version 0.1.0 | March 2026<br><br>
+  A Claude Code skill that converts Claude configurations into equivalent AWS Kiro
+  IDE and CLI configurations. Built for Claude Code users exploring Kiro who want to
+  bring their existing skills, rules, hooks, and workflows across.
+</blockquote>
+
+<hr>
+
+<h2 id="purpose">Purpose</h2>
+
+<p>Claude Code and Kiro are both AI-assisted coding tools, but they organise customisation
+differently. Engineers who have built skills, rules, hooks, and workflows in Claude Code
+often want those same guardrails in Kiro &mdash; especially when evaluating Kiro for team adoption
+or working across both tools.</p>
+
+<p>This skill automates that translation. Point it at your Claude setup and it generates
+the Kiro equivalent, with a migration report showing what ported cleanly, what needs
+manual adjustment, and what Kiro features you could adopt that Claude Code doesn&rsquo;t have.</p>
+
+<hr>
+
+<h2 id="why-kiro">Why Kiro?</h2>
+
+<p>Kiro is AWS&rsquo;s agentic AI IDE, available as both a standalone IDE (VS Code fork) and a
+CLI. It reached general availability in November 2025 and has evolved rapidly. For Claude
+Code users, Kiro is interesting because:</p>
+
+<h4>What Kiro adds beyond Claude Code:</h4>
+
+<table>
+  <thead>
+    <tr><th>Feature</th><th>What It Does</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Spec-driven development</strong></td><td>Structured requirements &rarr; design &rarr; tasks workflow using EARS notation</td></tr>
+    <tr><td><strong>Steering inclusion modes</strong></td><td>Context-sensitive rule loading &mdash; <code>always</code>, <code>fileMatch</code>, <code>manual</code>, <code>auto</code></td></tr>
+    <tr><td><strong>IDE hooks</strong></td><td>File-event triggers (save, create, delete) that run agent prompts or shell commands</td></tr>
+    <tr><td><strong>Autonomous agent</strong></td><td>Runs up to 10 tasks concurrently in sandboxed environments across sessions</td></tr>
+    <tr><td><strong>Powers</strong></td><td>Bundled partner integrations (MCP + steering + hooks as an installable unit)</td></tr>
+    <tr><td><strong>Knowledge bases</strong></td><td>Indexed local directories available as agent resources</td></tr>
+    <tr><td><strong>Agent <code>toolsSettings</code></strong></td><td>Per-tool path and command restrictions (more granular than Claude permissions)</td></tr>
+    <tr><td><strong>AGENTS.md support</strong></td><td>Cross-tool agent standard, always included in context</td></tr>
+  </tbody>
+</table>
+
+<h4>What ports cleanly (near-1:1):</h4>
+
+<table>
+  <thead>
+    <tr><th>Claude Code</th><th>Kiro</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Skills (SKILL.md)</td><td>Agent Skills (.kiro/skills/)</td><td>Same standard &mdash; YAML frontmatter (<code>name</code>, <code>description</code>) + markdown body + <code>references/</code> and <code>scripts/</code> subdirectories</td></tr>
+    <tr><td>Hooks (PreToolUse, PostToolUse, Stop)</td><td>CLI hooks</td><td>Same event model, different config format</td></tr>
+    <tr><td>MCP servers</td><td>MCP servers</td><td>Same protocol, different file location</td></tr>
+    <tr><td>Subagents</td><td>Custom agents (.kiro/agents/)</td><td>Kiro supports parallel custom agents</td></tr>
+    <tr><td>CLAUDE.md</td><td>Steering files (.kiro/steering/)</td><td>Kiro adds inclusion modes</td></tr>
+    <tr><td>Plugins</td><td>Agents + Steering + Skills + MCP</td><td>Decomposed into coordinated components</td></tr>
+  </tbody>
+</table>
+
+<h4>What changes:</h4>
+
+<table>
+  <thead>
+    <tr><th>Area</th><th>Difference</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Tool names</td><td><code>Read</code> &rarr; <code>read</code> (fs_read), <code>Bash</code> &rarr; <code>shell</code> (shell_execute), etc.</td></tr>
+    <tr><td>Project rules</td><td>Single CLAUDE.md &rarr; multiple steering files with inclusion modes</td></tr>
+    <tr><td>Prompt library</td><td>No separate prompt system &mdash; procedural content lives in skills or manual steering</td></tr>
+    <tr><td>Progressive disclosure</td><td>Claude loads skill metadata first, then full content. Kiro does this for skills but not steering.</td></tr>
+    <tr><td>Permissions</td><td>Claude uses settings.json allow/deny. Kiro uses per-agent allowedTools and toolsSettings.</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="mental-model">For Users New to Kiro: How the Mental Model Differs</h2>
+
+<p>If you&rsquo;ve been using Claude Code and are considering Kiro, this section walks through the
+key differences in plain language. The goal is to help you draw your own comparisons so
+the migration feels familiar rather than foreign.</p>
+
+<h3 id="project-rules">Where Your Project Rules Live</h3>
+
+<p>In Claude Code, you have one file &mdash; <code>CLAUDE.md</code> &mdash; sitting in your project root. Everything
+goes in there: coding standards, architecture rules, workflow instructions, security policies.
+Claude reads the whole thing every time you start a conversation.</p>
+
+<p>Kiro takes a different approach. Instead of one big file, you create <strong>multiple smaller
+files</strong> in a <code>.kiro/steering/</code> directory. Each file focuses on one topic &mdash; say, your
+TypeScript conventions, or your security policies, or your deployment workflow.</p>
+
+<p>The advantage is that Kiro lets you control <strong>when</strong> each file gets loaded:</p>
+
+<ul>
+  <li><strong>Always</strong> &mdash; loaded every time, just like CLAUDE.md. Use this for your core project rules that always apply.</li>
+  <li><strong>File match</strong> &mdash; only loaded when you&rsquo;re working with certain files. If you have rules that only matter for React components, you can set them to load only when <code>.tsx</code> files are involved. This keeps your context cleaner.</li>
+  <li><strong>Manual</strong> &mdash; only loaded when you explicitly ask for it by typing <code>/</code> or <code>#steering-name</code> in chat. Good for step-by-step workflows you don&rsquo;t need every conversation.</li>
+  <li><strong>Auto</strong> &mdash; loaded when Kiro thinks the steering file is relevant to your current request, based on a description you write. Similar to how Claude Code skills auto-trigger.</li>
+</ul>
+
+<p>When you migrate, this skill splits your single CLAUDE.md into multiple steering files and
+picks the most appropriate loading mode for each one.</p>
+
+<h3 id="memory-lessons">How Memory and Lessons Work</h3>
+
+<p>Claude Code has a persistent memory system &mdash; files in <code>~/.claude/</code> that remember things
+across conversations. Many users also keep a <code>tasks/lessons.md</code> file to track gotchas
+and patterns they&rsquo;ve learned the hard way, so Claude doesn&rsquo;t repeat the same mistakes.</p>
+
+<p>Kiro doesn&rsquo;t have a built-in memory system in the same sense. Instead, it achieves the
+same outcome through <strong>global steering files</strong>. These live in <code>~/.kiro/steering/</code> and
+apply to every project you open, just like Claude&rsquo;s global <code>~/.claude/CLAUDE.md</code>.</p>
+
+<p>Here&rsquo;s how your Claude Code patterns translate:</p>
+
+<table>
+  <thead>
+    <tr><th>What You Do in Claude Code</th><th>How to Do It in Kiro</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>~/.claude/CLAUDE.md</code> with global rules</td><td>Create files in <code>~/.kiro/steering/</code> &mdash; each rule set gets its own file</td></tr>
+    <tr><td><code>tasks/lessons.md</code> with project gotchas</td><td>Create <code>.kiro/steering/lessons.md</code> with <code>inclusion: always</code></td></tr>
+    <tr><td><code>~/.claude/tasks/lessons.md</code> with global lessons</td><td>Create <code>~/.kiro/steering/lessons.md</code> (global)</td></tr>
+    <tr><td>Claude memory files (<code>~/.claude/memory/</code>)</td><td>No direct equivalent &mdash; put durable rules in global steering instead</td></tr>
+    <tr><td>&ldquo;Remember to always do X&rdquo;</td><td>Write it in a steering file &mdash; Kiro reads it every time</td></tr>
+    <tr><td><code>tasks/todo.md</code> for task tracking</td><td>Kiro has <strong>specs</strong> &mdash; a built-in <code>tasks.md</code> with real-time status tracking</td></tr>
+  </tbody>
+</table>
+
+<p>The key difference: Claude Code separates &ldquo;memory&rdquo; (things it remembers about you) from
+&ldquo;rules&rdquo; (instructions it follows). Kiro combines both into steering files. If you want
+Kiro to remember something, you write it in a steering file. If you want it to follow a
+rule, same place.</p>
+
+<h3 id="security">Security Rules and Safety Guardrails</h3>
+
+<p>Rules like &ldquo;never expose API keys in chat&rdquo;, &ldquo;never commit .env files&rdquo;, or &ldquo;always use
+parameterised queries&rdquo; work the same way in both tools &mdash; you write them as instructions
+and the AI follows them.</p>
+
+<p>In Claude Code, you put these in your CLAUDE.md:</p>
+
+<pre><code><span class="cm">## Security</span>
+<span class="str">- Never expose API keys, passwords, or secrets in chat output</span>
+<span class="str">- Never commit .env files or credentials</span>
+<span class="str">- Always use parameterised queries &mdash; never concatenate SQL strings</span></code></pre>
+
+<p>In Kiro, you&rsquo;d create a <code>.kiro/steering/security.md</code> file:</p>
+
+<pre><code><span class="op">---</span>
+<span class="key">inclusion:</span> <span class="val">always</span>
+<span class="op">---</span>
+
+<span class="cm"># Security Policies</span>
+
+<span class="str">- Never expose API keys, passwords, or secrets in chat output</span>
+<span class="str">- Never commit .env files or credentials</span>
+<span class="str">- Always use parameterised queries &mdash; never concatenate SQL strings</span></code></pre>
+
+<p>The content is identical &mdash; you&rsquo;re just adding a small header that tells Kiro to always
+load this file. The migration skill does this conversion automatically.</p>
+
+<p>Where Kiro goes further than Claude Code on security:</p>
+
+<ul>
+  <li><strong>Per-agent tool restrictions</strong> &mdash; In Claude Code, you set permissions globally in
+  <code>settings.json</code> (allow these tools, deny those). In Kiro, you can set restrictions
+  <strong>per agent</strong>. Your &ldquo;code review&rdquo; agent might only be allowed to read files, while
+  your &ldquo;deployment&rdquo; agent can run shell commands but only specific ones. This is done
+  through <code>allowedTools</code> and <code>toolsSettings</code> in agent configs.</li>
+  <li><strong>Command-level restrictions</strong> &mdash; Kiro agents can specify exactly which shell commands
+  are allowed or denied. Instead of blanket &ldquo;allow Bash&rdquo; or &ldquo;deny Bash&rdquo;, you can say
+  &ldquo;allow <code>npm test</code> and <code>npm run build</code> but deny <code>rm -rf</code> and <code>chmod</code>.&rdquo; Claude Code&rsquo;s
+  hook system can achieve similar results but requires more setup.</li>
+  <li><strong>MCP Registry Governance</strong> (enterprise feature) &mdash; Administrators can control which
+  MCP servers are approved for use across the organisation. Claude Code has no equivalent
+  &mdash; any user can configure any MCP server.</li>
+  <li><strong>Model Governance</strong> (enterprise feature) &mdash; Administrators can control which AI models
+  agents are allowed to use. Useful for compliance environments where only certain models
+  are approved.</li>
+</ul>
+
+<p>When migrating, the skill converts your Claude Code permission blocks into Kiro&rsquo;s
+per-agent restrictions and flags any security rules that could be strengthened using
+Kiro&rsquo;s more granular controls. These appear in the &ldquo;Enhancement Opportunities&rdquo; section
+of the migration report.</p>
+
+<h3 id="skills-identical">Skills: Almost Identical</h3>
+
+<p>This is the easiest part of the migration. Kiro adopted the same skill format as Claude
+Code &mdash; a <code>SKILL.md</code> file with YAML frontmatter (<code>name</code> and <code>description</code>) and a markdown
+body, with optional <code>references/</code> and <code>scripts/</code> subdirectories.</p>
+
+<p>If you&rsquo;ve built skills for Claude Code, they&rsquo;ll work in Kiro with minimal changes:</p>
+
+<ol>
+  <li><strong>Tool names</strong> need updating (<code>Read</code> becomes <code>read</code>, <code>Bash</code> becomes <code>shell</code>, etc.)</li>
+  <li><strong>File location</strong> changes from wherever you stored them to <code>.kiro/skills/&lt;name&gt;/</code></li>
+  <li><strong>Auto-triggering</strong> works the same way &mdash; Kiro matches your skill&rsquo;s <code>description</code>
+     against the user&rsquo;s request, just like Claude Code does</li>
+</ol>
+
+<p>The migration skill handles all three automatically.</p>
+
+<h3 id="hooks-events">Hooks: Same Events, Different Format</h3>
+
+<p>Claude Code hooks fire on events like <code>PreToolUse</code> (before a tool runs), <code>PostToolUse</code>
+(after a tool runs), and <code>Stop</code> (when the agent finishes). You use them to block dangerous
+commands, validate output, or trigger follow-up actions.</p>
+
+<p>Kiro has the same event model with the same event names (just in camelCase: <code>preToolUse</code>,
+<code>postToolUse</code>, <code>stop</code>). The difference is where they&rsquo;re configured:</p>
+
+<ul>
+  <li><strong>Claude Code</strong> &mdash; hooks are defined in <code>settings.json</code> or plugin hook files</li>
+  <li><strong>Kiro CLI</strong> &mdash; hooks are defined inside agent configuration files, scoped to that agent</li>
+  <li><strong>Kiro IDE</strong> &mdash; hooks can also be created through the UI for file-event triggers (like
+  &ldquo;when a file is saved, run the linter&rdquo;), which is something Claude Code can&rsquo;t do</li>
+</ul>
+
+<p>The migration skill converts your Claude Code hooks into Kiro CLI hook format, translating
+event names and tool matchers automatically.</p>
+
+<h3 id="subagents">Subagents: Now Full Custom Agents</h3>
+
+<p>In Claude Code, you spawn subagents to handle parallel tasks &mdash; research, code review,
+testing &mdash; each with its own context window. They&rsquo;re ephemeral and defined inline.</p>
+
+<p>Kiro takes this further with <strong>custom agents</strong> in <code>.kiro/agents/</code>. These are persistent,
+named agents with their own:</p>
+
+<ul>
+  <li>System prompt (what the agent does)</li>
+  <li>Tool access (which tools it can use)</li>
+  <li>MCP servers (which external services it connects to)</li>
+  <li>Resources (which files, skills, and knowledge bases it can reference)</li>
+  <li>Hooks (lifecycle events specific to this agent)</li>
+  <li>Keyboard shortcut (quick-switch in the IDE)</li>
+</ul>
+
+<p>When migrating, your Claude Code subagent definitions become Kiro custom agent files.
+The migration skill generates the full agent config and flags Kiro-only features you
+could add (like knowledge bases or per-tool path restrictions) in the enhancement
+opportunities section.</p>
+
+<hr>
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>Claude Code uses a <strong>unified model</strong>: a single <code>SKILL.md</code> contains declarative rules,
+procedural workflows, tool configs, and examples in one place. <code>CLAUDE.md</code> is a single
+file for all project context.</p>
+
+<p>Kiro uses a <strong>distributed model</strong>: the same information maps to multiple config locations
+with different formats and loading behaviours:</p>
+
+<table>
+  <thead>
+    <tr><th>Content Type</th><th>Kiro Location</th><th>Loading</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Project rules and conventions</td><td><code>.kiro/steering/*.md</code></td><td>Per inclusion mode</td></tr>
+    <tr><td>Reusable skills</td><td><code>.kiro/skills/&lt;name&gt;/SKILL.md</code></td><td>Progressive (metadata &rarr; full)</td></tr>
+    <tr><td>Agent definitions</td><td><code>.kiro/agents/&lt;name&gt;.md</code></td><td>On agent activation</td></tr>
+    <tr><td>Hook logic</td><td>Agent config <code>hooks</code> block</td><td>On matching events</td></tr>
+    <tr><td>MCP tool integrations</td><td><code>.kiro/settings/mcp.json</code></td><td>At startup</td></tr>
+  </tbody>
+</table>
+
+<p>Unlike the Amazon Q Developer migration (which required splitting content across rules,
+prompts, agents, and MCP), the Kiro migration is substantially more direct &mdash; most Claude
+Code primitives have near-exact Kiro equivalents. The main work is reformatting configs,
+translating tool names, and choosing appropriate steering inclusion modes.</p>
+
+<hr>
+
+<h2 id="how-it-works">How It Works</h2>
+
+<h3 id="content-classification">Content Classification</h3>
+
+<p>The skill reads each Claude source file and routes content to Kiro destinations:</p>
+
+<pre class="diagram"><code>+---------------------------------+
+|        Claude Source File        |
+|  (CLAUDE.md / SKILL.md / etc.)  |
++----------------+----------------+
+                 |
+          +------+------+
+          |  Classifier  |
+          +------+------+
+                 |
+    +--------+---+---+--------+-----------+
+    |        |       |        |           |
+    v        v       v        v           v
+ Steering  Skills  Agents   Hooks       Report
+ (.kiro/   (.kiro/ (.kiro/  (agent      (MIGRATION_
+  steering) skills) agents)  config)     REPORT.md)</code></pre>
+
+<h4>Routing table:</h4>
+
+<table>
+  <thead>
+    <tr><th>Claude Code Source</th><th>Kiro Destination</th><th>Steering Inclusion</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>CLAUDE.md &mdash; core rules, conventions</td><td><code>.kiro/steering/&lt;topic&gt;.md</code></td><td><code>always</code></td></tr>
+    <tr><td>CLAUDE.md &mdash; file-type-specific rules</td><td><code>.kiro/steering/&lt;topic&gt;.md</code></td><td><code>fileMatch</code></td></tr>
+    <tr><td>CLAUDE.md &mdash; procedural workflows</td><td><code>.kiro/steering/&lt;topic&gt;.md</code></td><td><code>manual</code></td></tr>
+    <tr><td>Skills (SKILL.md + references/)</td><td><code>.kiro/skills/&lt;name&gt;/SKILL.md</code></td><td>N/A</td></tr>
+    <tr><td>Hooks (PreToolUse, PostToolUse, Stop)</td><td>Agent config <code>hooks</code> block</td><td>N/A</td></tr>
+    <tr><td>MCP servers (settings.json)</td><td><code>.kiro/settings/mcp.json</code></td><td>N/A</td></tr>
+    <tr><td>Plugins (plugin.json + components)</td><td>Agents + steering + skills + MCP</td><td>Mixed</td></tr>
+    <tr><td>Subagent definitions</td><td><code>.kiro/agents/&lt;name&gt;.md</code></td><td>N/A</td></tr>
+    <tr><td>Slash commands</td><td><code>.kiro/steering/&lt;name&gt;.md</code></td><td><code>manual</code></td></tr>
+    <tr><td>CLAUDE.md &mdash; AGENTS.md-compatible directives</td><td><code>AGENTS.md</code> (project root)</td><td>N/A (always included)</td></tr>
+  </tbody>
+</table>
+
+<h3 id="steering-classification">Steering Inclusion Mode Classification (Hybrid)</h3>
+
+<p>The skill uses a hybrid approach: signal-based detection for obvious cases, <code>always</code> as
+the default, and flags in the migration report for ambiguous content.</p>
+
+<p><strong><code>fileMatch</code></strong> &mdash; detected when content contains:</p>
+<ul>
+  <li>Explicit file patterns: <code>*.tsx</code>, <code>*.py</code>, <code>.go files</code></li>
+  <li>Path references: &ldquo;in src/components&rdquo;, &ldquo;under tests/&rdquo;</li>
+  <li>Language scoping: &ldquo;For TypeScript&rdquo;, &ldquo;When writing Python&rdquo;, &ldquo;React components&rdquo;</li>
+</ul>
+
+<p><strong><code>manual</code></strong> &mdash; detected when content contains:</p>
+<ul>
+  <li>Numbered step workflows, decision trees</li>
+  <li>&ldquo;First... then...&rdquo; procedural patterns</li>
+  <li>Slash command definitions</li>
+  <li>Output format templates</li>
+</ul>
+
+<p><strong><code>auto</code></strong> &mdash; detected when content contains:</p>
+<ul>
+  <li>Description-based matching phrases (similar to Claude skill triggering)</li>
+  <li>Context-dependent rules that should only load when the request matches a description</li>
+  <li>Content that was a standalone Claude skill but is being converted to steering rather
+  than a Kiro skill (e.g., when the content is too small for a full skill directory)</li>
+  <li>Requires <code>name</code> and <code>description</code> fields in the steering frontmatter</li>
+</ul>
+
+<p><strong><code>always</code></strong> (default) &mdash; everything else:</p>
+<ul>
+  <li>Architecture rules, coding standards, conventions</li>
+  <li>Project structure, dependency notes</li>
+  <li>Team constraints, security policies</li>
+</ul>
+
+<p><strong>Ambiguous</strong> &mdash; flagged in migration report when:</p>
+<ul>
+  <li>Content mixes declarative and procedural</li>
+  <li>File-type scoping is implied but not explicit</li>
+  <li>Content could reasonably be <code>always</code> or <code>fileMatch</code></li>
+</ul>
+
+<h3 id="tool-translation">Tool Name Translation</h3>
+
+<p>Claude Code and Kiro use different canonical tool names. The skill auto-translates all
+references and injects a mapping comment header in every affected file:</p>
+
+<table>
+  <thead>
+    <tr><th>Claude Code</th><th>Kiro Canonical</th><th>Kiro Alias</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Read</code></td><td><code>fs_read</code></td><td><code>read</code></td></tr>
+    <tr><td><code>Write</code></td><td><code>fs_write</code></td><td><code>write</code></td></tr>
+    <tr><td><code>Edit</code></td><td><code>fs_edit</code></td><td><code>edit</code></td></tr>
+    <tr><td><code>Bash</code></td><td><code>shell_execute</code></td><td><code>shell</code></td></tr>
+    <tr><td><code>Glob</code></td><td><code>fs_list</code></td><td><code>list</code></td></tr>
+    <tr><td><code>Grep</code></td><td><code>fs_search</code></td><td><code>search</code></td></tr>
+    <tr><td><code>WebFetch</code></td><td><code>web_fetch</code></td><td>&mdash;</td></tr>
+    <tr><td><code>WebSearch</code></td><td><code>web_search</code></td><td>&mdash;</td></tr>
+    <tr><td><code>Agent</code> (subagent)</td><td><code>.kiro/agents/&lt;name&gt;.md</code> custom agent</td><td>Direct mapping (not a tool rename)</td></tr>
+  </tbody>
+</table>
+
+<p>Generated comment header:</p>
+
+<pre><code><span class="cm">&lt;!-- Tool names translated from Claude Code -&gt; Kiro:</span>
+<span class="cm">     Read -&gt; read (fs_read), Write -&gt; write (fs_write), Edit -&gt; edit (fs_edit)</span>
+<span class="cm">     Bash -&gt; shell (shell_execute), Glob -&gt; list (fs_list), Grep -&gt; search (fs_search)</span>
+<span class="cm">     WebFetch -&gt; web_fetch, WebSearch -&gt; web_search</span>
+<span class="cm">     Agent (subagent) -&gt; see .kiro/agents/ custom agents --&gt;</span></code></pre>
+
+<hr>
+
+<h2 id="conversion-workflows">Conversion Workflows</h2>
+
+<h3 id="wf1">Workflow 1: Single Skill Conversion</h3>
+
+<p>Convert one Claude Code skill to a Kiro skill.</p>
+
+<pre><code><span class="key">Source:</span> <span class="str">skills/&lt;name&gt;/SKILL.md + references/ + scripts/</span>
+<span class="key">Target:</span> <span class="str">.kiro/skills/&lt;name&gt;/SKILL.md + references/ + scripts/</span></code></pre>
+
+<p><strong>Steps:</strong></p>
+<ol>
+  <li>Read source <code>SKILL.md</code> and all <code>references/</code>, <code>scripts/</code>, <code>examples/</code></li>
+  <li>Translate tool names in all content (with mapping comment header)</li>
+  <li>Adjust YAML frontmatter &mdash; keep <code>name</code> and <code>description</code>, drop Claude-specific fields</li>
+  <li>Copy <code>references/</code> and <code>scripts/</code> directories (tool names translated in content)</li>
+  <li>Generate migration report entry</li>
+</ol>
+
+<p>This is the simplest workflow. Kiro adopted the same SKILL.md standard, so skills
+are nearly copy-paste with tool name adjustments.</p>
+
+<h3 id="wf2">Workflow 2: Full Project Conversion</h3>
+
+<p>Convert an entire Claude Code project setup to Kiro.</p>
+
+<pre><code><span class="key">Source:</span> <span class="str">CLAUDE.md + skills/ + hooks + MCP + plugins</span>
+<span class="key">Target:</span> <span class="str">.kiro/steering/ + .kiro/skills/ + .kiro/agents/ + .kiro/settings/mcp.json</span></code></pre>
+
+<p><strong>Steps:</strong></p>
+<ol>
+  <li>Read <code>CLAUDE.md</code> &rarr; split into steering files by topic, classify inclusion modes</li>
+  <li>Scan <code>skills/</code> directory &rarr; convert each skill via Workflow 1</li>
+  <li>Read hook configurations &rarr; translate to Kiro CLI hook format in agent configs</li>
+  <li>Read MCP config from Claude settings &rarr; translate to <code>.kiro/settings/mcp.json</code></li>
+  <li>Read any plugin definitions &rarr; convert via Workflow 4</li>
+  <li>Consolidate migration report + enhancement opportunities</li>
+</ol>
+
+<h3 id="wf3">Workflow 3: Global Config Conversion</h3>
+
+<p>Convert the user&rsquo;s global Claude Code configuration to Kiro.</p>
+
+<pre><code><span class="key">Source:</span> <span class="str">~/.claude/CLAUDE.md + ~/.claude/skills/* + ~/.claude/settings.json</span>
+<span class="key">Target:</span> <span class="str">~/.kiro/steering/ + ~/.kiro/skills/ + ~/.kiro/settings/mcp.json</span></code></pre>
+
+<p><strong>Steps:</strong></p>
+<ol>
+  <li>Read <code>~/.claude/CLAUDE.md</code> &rarr; generate global steering files</li>
+  <li>Scan <code>~/.claude/skills/*</code> &rarr; convert each skill to <code>~/.kiro/skills/</code></li>
+  <li>Read global MCP config &rarr; translate to <code>~/.kiro/settings/mcp.json</code></li>
+  <li>Generate migration report</li>
+</ol>
+
+<h3 id="wf4">Workflow 4: Plugin-to-Power Bundle</h3>
+
+<p>Convert a Claude Code plugin into a coordinated Kiro bundle of agents, steering,
+hooks, and MCP. This is the most complex workflow and the one that most benefits
+from automation.</p>
+
+<pre><code><span class="key">Source:</span> <span class="str">plugin.json + skills/ + agents/ + hooks/ + .mcp.json</span>
+<span class="key">Target:</span> <span class="str">.kiro/agents/&lt;name&gt;.md + .kiro/steering/ + .kiro/skills/ + .kiro/settings/mcp.json</span></code></pre>
+
+<p><strong>Steps:</strong></p>
+<ol>
+  <li>Read <code>plugin.json</code> manifest &mdash; extract name, description, component list</li>
+  <li>For each skill in the plugin &rarr; convert via Workflow 1</li>
+  <li>For each agent definition &rarr; generate <code>.kiro/agents/&lt;name&gt;.md</code> with:
+    <ul>
+      <li><code>prompt</code> from agent system prompt</li>
+      <li><code>tools</code> mapped from Claude tool permissions</li>
+      <li><code>allowedTools</code> from auto-approved tools</li>
+      <li><code>hooks</code> from Claude hook definitions (translated event names and matchers)</li>
+      <li><code>mcpServers</code> from plugin MCP config</li>
+      <li><code>resources</code> pointing to converted steering files and skills</li>
+    </ul>
+  </li>
+  <li>For hook-only definitions (no parent agent) &rarr; attach to a generated agent or document in steering</li>
+  <li>Merge MCP servers into <code>.kiro/settings/mcp.json</code></li>
+  <li>Generate migration report entry with enhancement opportunities noting Kiro-only features</li>
+</ol>
+
+<h4>Output Modes</h4>
+
+<table>
+  <thead>
+    <tr><th>Mode</th><th>Behaviour</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Staging</strong> (default)</td><td>Write all output to <code>kiro-export/</code> directory for review</td></tr>
+    <tr><td><strong>Direct</strong> (explicit only)</td><td>Write to <code>.kiro/</code> and <code>~/.kiro/</code> in-place</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="usage">Usage</h2>
+
+<h3>Port a Single Skill</h3>
+
+<blockquote>&ldquo;Port my udemy-scanner skill to Kiro&rdquo;</blockquote>
+
+<p>Reads <code>skills/udemy-scanner/SKILL.md</code> + references and generates:</p>
+
+<pre class="diagram"><code>kiro-export/
+&#9500;&#9472;&#9472; .kiro/
+&#9474;   &#9492;&#9472;&#9472; skills/
+&#9474;       &#9492;&#9472;&#9472; udemy-scanner/
+&#9474;           &#9500;&#9472;&#9472; SKILL.md
+&#9474;           &#9492;&#9472;&#9472; references/
+&#9474;               &#9492;&#9472;&#9472; (converted reference files)
+&#9492;&#9472;&#9472; MIGRATION_REPORT.md</code></pre>
+
+<h3>Port an Entire Project</h3>
+
+<blockquote>&ldquo;Convert this project&rsquo;s Claude setup to Kiro&rdquo;</blockquote>
+
+<p>Reads CLAUDE.md, all skills, hooks, and MCP config. Generates the full Kiro structure:</p>
+
+<pre class="diagram"><code>kiro-export/
+&#9500;&#9472;&#9472; .kiro/
+&#9474;   &#9500;&#9472;&#9472; steering/
+&#9474;   &#9474;   &#9500;&#9472;&#9472; project-context.md          (inclusion: always)
+&#9474;   &#9474;   &#9500;&#9472;&#9472; typescript-standards.md     (inclusion: fileMatch, pattern: **/*.ts)
+&#9474;   &#9474;   &#9492;&#9472;&#9472; task-workflow.md            (inclusion: manual)
+&#9474;   &#9500;&#9472;&#9472; skills/
+&#9474;   &#9474;   &#9500;&#9472;&#9472; udemy-scanner/
+&#9474;   &#9474;   &#9474;   &#9492;&#9472;&#9472; SKILL.md
+&#9474;   &#9474;   &#9492;&#9472;&#9472; claude-to-kiro/
+&#9474;   &#9474;       &#9492;&#9472;&#9472; SKILL.md
+&#9474;   &#9500;&#9472;&#9472; agents/
+&#9474;   &#9474;   &#9492;&#9472;&#9472; (if plugins or subagents exist)
+&#9474;   &#9492;&#9472;&#9472; settings/
+&#9474;       &#9492;&#9472;&#9472; mcp.json
+&#9492;&#9472;&#9472; MIGRATION_REPORT.md</code></pre>
+
+<h3>Port Global Claude Config</h3>
+
+<blockquote>&ldquo;Port my global Claude config to Kiro&rdquo;</blockquote>
+
+<p>Reads <code>~/.claude/CLAUDE.md</code> and <code>~/.claude/skills/*</code>. Generates global Kiro equivalents.</p>
+
+<h3>Port a Plugin</h3>
+
+<blockquote>&ldquo;Convert my network-tools plugin to Kiro&rdquo;</blockquote>
+
+<p>Reads the plugin manifest and all components. Generates coordinated agents, steering,
+skills, and MCP config.</p>
+
+<h3>Direct Mode</h3>
+
+<blockquote>&ldquo;Port my Claude skills to Kiro directly &mdash; write in-place&rdquo;</blockquote>
+
+<p>Writes directly to <code>.kiro/</code> and <code>~/.kiro/</code> instead of the staging directory.</p>
+
+<hr>
+
+<h2 id="migration-report">Migration Report</h2>
+
+<p>Every conversion generates <code>MIGRATION_REPORT.md</code> with five sections:</p>
+
+<h3>1. Successfully Ported</h3>
+
+<pre><code><span class="cb">- [x]</span> CLAUDE.md &rarr; .kiro/steering/project-context.md (always)
+<span class="cb">- [x]</span> CLAUDE.md (TypeScript rules) &rarr; .kiro/steering/typescript.md (fileMatch: **/*.ts)
+<span class="cb">- [x]</span> skills/udemy-scanner &rarr; .kiro/skills/udemy-scanner/
+<span class="cb">- [x]</span> PreToolUse hook (block rm -rf) &rarr; agent hook with shell_execute matcher
+<span class="cb">- [x]</span> MCP servers (3/3) &rarr; .kiro/settings/mcp.json</code></pre>
+
+<h3>2. Partial &mdash; Manual Adjustment Needed</h3>
+
+<pre><code><span class="cb">- [~]</span> Plugin "network-tools" &rarr; .kiro/agents/network-tools.md
+      Hook logic simplified &mdash; review tools denied mapping
+      See TODO comments in generated files</code></pre>
+
+<h3>3. Not Portable &mdash; Workarounds Suggested</h3>
+
+<pre><code><span class="cb">- [ ]</span> Claude context window management (progressive disclosure for steering)
+      &rarr; Workaround: keep steering files small, use fileMatch to reduce loaded context
+<span class="cb">- [ ]</span> Claude permission modes (settings.json allow/deny)
+      &rarr; Workaround: use per-agent allowedTools and toolsSettings</code></pre>
+
+<h3>4. File Mapping Table</h3>
+
+<table>
+  <thead>
+    <tr><th>Claude Source</th><th>Kiro Target</th><th>Inclusion</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>CLAUDE.md (core)</td><td>.kiro/steering/project-context.md</td><td>always</td><td>Ported</td></tr>
+    <tr><td>CLAUDE.md (TS rules)</td><td>.kiro/steering/typescript.md</td><td>fileMatch</td><td>Ported</td></tr>
+    <tr><td>skills/udemy-scanner/</td><td>.kiro/skills/udemy-scanner/</td><td>&mdash;</td><td>Ported</td></tr>
+    <tr><td>~/.claude/settings.json</td><td>.kiro/settings/mcp.json</td><td>&mdash;</td><td>Ported</td></tr>
+  </tbody>
+</table>
+
+<h3>5. Enhancement Opportunities</h3>
+
+<p>Kiro features the user could adopt that have no Claude Code equivalent:</p>
+
+<ul>
+  <li><strong>fileMatch steering</strong>: Your TypeScript rules were converted with
+  fileMatch: <code>**/*.{ts,tsx}</code> &mdash; consider adding more file-scoped rules
+  for CSS, tests, or infrastructure files</li>
+  <li><strong>Agent knowledge bases</strong>: Your network-tools agent could reference
+  indexed documentation via <code>resources: [{ type: "knowledgeBase", path: "docs/" }]</code></li>
+  <li><strong>toolsSettings path restrictions</strong>: Lock agents to specific directories
+  with <code>toolsSettings.allowedPaths</code> instead of broad tool permissions</li>
+  <li><strong>Kiro specs</strong>: Your project has structured task workflows that could be
+  formalised as Kiro specs (requirements.md / design.md / tasks.md)</li>
+  <li><strong>IDE hooks</strong>: Consider adding file-save hooks for auto-linting or
+  test-running &mdash; these complement CLI hooks with no Claude Code equivalent</li>
+</ul>
+
+<p>Inline <code>&lt;!-- TODO: Manual migration needed &mdash; [description] --&gt;</code> comments are injected
+in generated files where manual adjustment is required.</p>
+
+<hr>
+
+<h2 id="worked-example">Worked Example: Converting udemy-scanner</h2>
+
+<p>This walkthrough shows the complete conversion of a real Claude Code skill.</p>
+
+<h3>Input: Claude Code Skill</h3>
+
+<p><strong><code>skills/udemy-scanner/SKILL.md</code></strong> (excerpt):</p>
+
+<pre><code><span class="op">---</span>
+<span class="key">name:</span> <span class="str">udemy-scanner</span>
+<span class="key">description:</span> <span class="op">&gt;</span>
+  <span class="str">Search for and extract structured Udemy course information using</span>
+  <span class="str">multi-strategy fallbacks via Class Central and WebSearch.</span>
+<span class="op">---</span>
+
+<span class="cm">## Important: Udemy Blocks Direct Fetching</span>
+Udemy returns 403 Forbidden on direct WebFetch requests. Never attempt to
+fetch udemy.com URLs directly.
+
+<span class="cm">## Workflow</span>
+
+<span class="cm">### Single Course Lookup</span>
+1. Identify the course URL or title
+2. Use WebSearch to find Class Central mirror
+3. Use WebFetch on Class Central result
+4. Extract structured data
+5. If instructor unknown, use WebSearch for instructor subdomain</code></pre>
+
+<h3>Output: Kiro Skill</h3>
+
+<p><strong><code>kiro-export/.kiro/skills/udemy-scanner/SKILL.md</code></strong>:</p>
+
+<pre><code><span class="cm">&lt;!-- Tool names translated from Claude Code -&gt; Kiro:</span>
+<span class="cm">     WebFetch -&gt; web_fetch, WebSearch -&gt; web_search --&gt;</span>
+
+<span class="op">---</span>
+<span class="key">name:</span> <span class="str">udemy-scanner</span>
+<span class="key">description:</span> <span class="op">&gt;</span>
+  <span class="str">Search for and extract structured Udemy course information using</span>
+  <span class="str">multi-strategy fallbacks via Class Central and web_search.</span>
+<span class="op">---</span>
+
+<span class="cm">## Important: Udemy Blocks Direct Fetching</span>
+Udemy returns 403 Forbidden on direct web_fetch requests. Never attempt to
+fetch udemy.com URLs directly.
+
+<span class="cm">## Workflow</span>
+
+<span class="cm">### Single Course Lookup</span>
+1. Identify the course URL or title
+2. Use web_search to find Class Central mirror
+3. Use web_fetch on Class Central result
+4. Extract structured data
+5. If instructor unknown, use web_search for instructor subdomain</code></pre>
+
+<h3>Output: Migration Report Entry</h3>
+
+<pre><code><span class="cm">## 1. Successfully Ported</span>
+<span class="cb">- [x]</span> skills/udemy-scanner/SKILL.md &rarr; .kiro/skills/udemy-scanner/SKILL.md
+      Tool names translated: WebSearch &rarr; web_search, WebFetch &rarr; web_fetch
+
+<span class="cm">## 5. Enhancement Opportunities</span>
+- <strong>Auto-triggering preserved</strong>: Kiro skills use the same description-based
+  matching as Claude Code &mdash; this skill will auto-trigger on matching requests
+- <strong>Consider adding scripts/</strong>: If the search strategies could be scripted,
+  Kiro skills support bundled scripts in scripts/</code></pre>
+
+<hr>
+
+<h2 id="concept-mapping">Complete Concept Mapping</h2>
+
+<h3>Configuration Files</h3>
+
+<table>
+  <thead>
+    <tr><th>Claude Code</th><th>Location</th><th>Kiro</th><th>Location</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>CLAUDE.md</code> (project)</td><td>Project root</td><td>Steering files</td><td><code>.kiro/steering/*.md</code></td></tr>
+    <tr><td><code>CLAUDE.md</code> (global)</td><td><code>~/.claude/CLAUDE.md</code></td><td>Global steering</td><td><code>~/.kiro/steering/*.md</code></td></tr>
+    <tr><td><code>settings.json</code> (MCP)</td><td><code>~/.claude/settings.json</code></td><td>MCP config</td><td><code>.kiro/settings/mcp.json</code></td></tr>
+    <tr><td>Plugin config</td><td><code>.claude-plugin/plugin.json</code></td><td>Agent + steering + MCP</td><td><code>.kiro/agents/</code> + <code>.kiro/steering/</code></td></tr>
+    <tr><td>Skills</td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>Agent skills</td><td><code>.kiro/skills/&lt;name&gt;/SKILL.md</code></td></tr>
+    <tr><td>CLAUDE.md (agent directives)</td><td>Project root</td><td>AGENTS.md</td><td>Project root (always included)</td></tr>
+  </tbody>
+</table>
+
+<h3>Feature Mapping</h3>
+
+<table>
+  <thead>
+    <tr><th>Claude Code Feature</th><th>Kiro Equivalent</th><th>Mapping Quality</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>CLAUDE.md instructions</td><td>Steering files (with inclusion modes)</td><td><strong>Better</strong> &mdash; adds context-sensitive loading</td></tr>
+    <tr><td>Skills (SKILL.md)</td><td>Agent Skills (.kiro/skills/)</td><td><strong>Direct</strong> &mdash; same standard</td></tr>
+    <tr><td>Skill references/</td><td>Skill references/</td><td><strong>Direct</strong> &mdash; same structure</td></tr>
+    <tr><td>Skill scripts/</td><td>Skill scripts/</td><td><strong>Direct</strong> &mdash; same structure</td></tr>
+    <tr><td>MCP servers</td><td>MCP servers (.kiro/settings/mcp.json)</td><td><strong>Direct</strong> &mdash; same protocol</td></tr>
+    <tr><td>Hooks (PreToolUse)</td><td>CLI hooks (preToolUse)</td><td><strong>Direct</strong> &mdash; same event model</td></tr>
+    <tr><td>Hooks (PostToolUse)</td><td>CLI hooks (postToolUse)</td><td><strong>Direct</strong> &mdash; same event model</td></tr>
+    <tr><td>Hooks (Stop)</td><td>CLI hooks (stop)</td><td><strong>Direct</strong> &mdash; same event model</td></tr>
+    <tr><td>Subagents</td><td>Custom agents (.kiro/agents/)</td><td><strong>Direct</strong> &mdash; parallel execution supported</td></tr>
+    <tr><td>Plugins</td><td>Agents + Steering + Skills + MCP</td><td><strong>Good</strong> &mdash; decomposed into components</td></tr>
+    <tr><td>Slash commands</td><td>Manual steering (<code>inclusion: manual</code>)</td><td><strong>Similar</strong> &mdash; invoked with <code>/</code> in chat or <code>#steering-name</code> reference</td></tr>
+    <tr><td>Permissions (allow/deny)</td><td>Agent allowedTools + toolsSettings</td><td><strong>Better</strong> &mdash; more granular</td></tr>
+    <tr><td>Context window management</td><td>Progressive skill loading</td><td><strong>Partial</strong> &mdash; skills only, not steering</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="skill-architecture">Skill Architecture</h2>
+
+<pre class="diagram"><code>claude-to-kiro/
+&#9500;&#9472;&#9472; docs/
+&#9474;   &#9492;&#9472;&#9472; claude-to-kiro-design.md              &lt;- This document
+&#9492;&#9472;&#9472; skills/
+    &#9492;&#9472;&#9472; claude-to-kiro/
+        &#9500;&#9472;&#9472; SKILL.md                           &lt;- Core conversion workflow
+        &#9492;&#9472;&#9472; references/
+            &#9500;&#9472;&#9472; mapping-guide.md               &lt;- Complete concept mapping + classification rules
+            &#9500;&#9472;&#9472; steering-template.md           &lt;- .kiro/steering/ format + inclusion modes
+            &#9500;&#9472;&#9472; agent-template.md              &lt;- .kiro/agents/ markdown config format
+            &#9500;&#9472;&#9472; hook-template.md               &lt;- CLI + IDE hook config format
+            &#9500;&#9472;&#9472; skill-template.md              &lt;- .kiro/skills/ format (near-1:1 mapping)
+            &#9492;&#9472;&#9472; mcp-config-template.md         &lt;- .kiro/settings/mcp.json translation</code></pre>
+
+<hr>
+
+<h2 id="limitations">Limitations</h2>
+
+<ul>
+  <li><strong>Kiro specs</strong> &mdash; This skill does not generate Kiro spec files (requirements.md,
+  design.md, tasks.md) from Claude Code content. Specs are authored development
+  artifacts, not configuration &mdash; generating them from tangentially related content
+  would produce low-quality output. The migration report notes specs as an enhancement
+  opportunity.</li>
+  <li><strong>Progressive disclosure for steering</strong> &mdash; Claude&rsquo;s progressive disclosure
+  (metadata then full content) works for Kiro skills but not steering files.
+  Steering files with <code>inclusion: always</code> are loaded in full every interaction.
+  Workaround: keep steering files small and use <code>fileMatch</code> to reduce context.</li>
+  <li><strong>Claude permission modes</strong> &mdash; Claude&rsquo;s <code>settings.json</code> allow/deny blocks have no
+  direct Kiro equivalent at the project level. Workaround: use per-agent <code>allowedTools</code>
+  and <code>toolsSettings</code> for similar restrictions.</li>
+  <li><strong>IDE hooks</strong> &mdash; Claude Code hooks are CLI-only. Kiro IDE hooks (file-save triggers,
+  etc.) have no Claude Code source material to convert from. Noted as an enhancement
+  opportunity in the migration report.</li>
+  <li><strong>Powers</strong> &mdash; Kiro Powers are partner-provided bundled integrations (e.g., Figma,
+  Netlify). User-created plugins cannot become first-class Powers &mdash; they convert to
+  the equivalent agent + steering + MCP combination instead.</li>
+  <li><strong>Tool name edge cases</strong> &mdash; Auto-translation handles standard tool names. Custom MCP
+  tool names or tools referenced by non-standard aliases may not be caught. These are
+  flagged in the migration report.</li>
+  <li><strong>Kiro Autonomous Agent</strong> &mdash; Kiro&rsquo;s autonomous agent (runs up to 10 concurrent tasks
+  in sandboxed environments across sessions) has no Claude Code equivalent to convert
+  from. This is a Kiro-native capability noted as an enhancement opportunity in the
+  migration report.</li>
+</ul>
+
+<hr>
+
+<h2 id="relationship">Relationship to claude-to-amazonq</h2>
+
+<p>This skill exists alongside the <code>claude-to-amazonq</code> skill in the same repository.
+The two skills are independent &mdash; they share no code or templates.</p>
+
+<h4>When to use which:</h4>
+
+<table>
+  <thead>
+    <tr><th>Target</th><th>Skill</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Amazon Q Developer</td><td>claude-to-amazonq</td><td>IDE plugin, <code>.amazonq/</code> structure</td></tr>
+    <tr><td>Kiro IDE or CLI</td><td>claude-to-kiro</td><td>Standalone IDE/CLI, <code>.kiro/</code> structure</td></tr>
+    <tr><td>Migrating Amazon Q &rarr; Kiro</td><td>Neither &mdash; use Kiro&rsquo;s built-in migration</td><td><code>kiro-cli</code> auto-migrates <code>.amazonq/</code> to <code>.kiro/</code></td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2 id="future">Future Enhancements</h2>
+
+<ul>
+  <li><strong>Bidirectional sync</strong> &mdash; Kiro &rarr; Claude Code conversion</li>
+  <li><strong>Diff-based updates</strong> &mdash; Re-run conversion and only update changed files</li>
+  <li><strong>Team templates</strong> &mdash; Generate Kiro configs from a team-standard Claude setup</li>
+  <li><strong>Validation</strong> &mdash; Verify generated Kiro configs match expected schema</li>
+  <li><strong>AGENTS.md generation</strong> &mdash; Generate cross-tool AGENTS.md from Claude CLAUDE.md
+  for projects using both tools</li>
+</ul>
+
+<hr>
+
+<p><em>Last updated: March 2026</em></p>
+
+<footer>
+  <p>Created by: <strong>DT74 &mdash; Daren Threadingham</strong></p>
+</footer>
+
+</main>
+
+</body>
+</html>

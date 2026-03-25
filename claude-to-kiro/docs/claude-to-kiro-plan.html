@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude-to-Kiro Implementation Plan</title>
+<style>
+  /* Reset & Base */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; font-size: 16px; }
+
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* Sidebar / TOC */
+  nav.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background: #16162a;
+    border-right: 1px solid #2d2d44;
+    overflow-y: auto;
+    padding: 1.5rem 1rem;
+    z-index: 100;
+    transition: transform 0.3s ease;
+  }
+
+  nav.sidebar h2 {
+    color: #4fc3f7;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #2d2d44;
+  }
+
+  nav.sidebar ul { list-style: none; }
+
+  nav.sidebar li { margin-bottom: 0.25rem; }
+
+  nav.sidebar a {
+    color: #b0b0c8;
+    text-decoration: none;
+    font-size: 0.85rem;
+    display: block;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  nav.sidebar a:hover {
+    background: #2d2d44;
+    color: #4fc3f7;
+  }
+
+  nav.sidebar li.indent { padding-left: 1rem; }
+
+  /* Mobile toggle */
+  .nav-toggle {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 200;
+    background: #4fc3f7;
+    color: #1a1a2e;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  /* Main content */
+  main {
+    margin-left: 280px;
+    max-width: 900px;
+    padding: 2.5rem 3rem 4rem;
+    width: calc(100% - 280px);
+  }
+
+  /* Headings */
+  h1 {
+    color: #4fc3f7;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 2px solid #4fc3f7;
+    padding-bottom: 0.5rem;
+  }
+
+  h2 {
+    color: #4fc3f7;
+    font-size: 1.5rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #2d2d44;
+  }
+
+  h3 {
+    color: #81d4fa;
+    font-size: 1.2rem;
+    margin-top: 1.8rem;
+    margin-bottom: 0.75rem;
+  }
+
+  h4 {
+    color: #b3e5fc;
+    font-size: 1.05rem;
+    margin-top: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Blockquote */
+  blockquote {
+    background: #2d2d44;
+    border-left: 4px solid #4fc3f7;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0 1.5rem;
+    border-radius: 0 6px 6px 0;
+    color: #c0c0d8;
+    font-size: 0.95rem;
+  }
+
+  blockquote strong { color: #e0e0e0; }
+
+  /* Paragraphs */
+  p { margin-bottom: 1rem; }
+
+  /* Links */
+  a { color: #4fc3f7; }
+
+  /* Horizontal rules */
+  hr {
+    border: none;
+    border-top: 1px solid #2d2d44;
+    margin: 2rem 0;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  th {
+    background: #2a2a48;
+    color: #4fc3f7;
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #3a3a5c;
+    font-weight: 600;
+  }
+
+  td {
+    padding: 0.55rem 0.8rem;
+    border: 1px solid #3a3a5c;
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td { background: #22223a; }
+  tr:nth-child(odd) td { background: #1e1e34; }
+  tr:hover td { background: #2d2d50; }
+
+  td strong { color: #e0e0e0; }
+
+  /* Lists */
+  ul, ol {
+    margin: 0.5rem 0 1rem 1.5rem;
+  }
+
+  li { margin-bottom: 0.35rem; }
+
+  li ul, li ol { margin-top: 0.35rem; margin-bottom: 0.35rem; }
+
+  /* Checkbox items */
+  .checkbox-item {
+    list-style: none;
+    margin-left: -1.5rem;
+    padding-left: 0;
+  }
+
+  .checkbox-item::before {
+    content: none;
+  }
+
+  .cb-box {
+    display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
+    border: 2px solid #4fc3f7;
+    border-radius: 3px;
+    vertical-align: middle;
+    margin-right: 0.5em;
+    position: relative;
+    top: -1px;
+  }
+
+  /* Inline code */
+  code {
+    background: #2d2d44;
+    color: #ce93d8;
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.88em;
+  }
+
+  /* Code blocks */
+  pre {
+    background: #2d2d44;
+    border: 1px solid #3a3a5c;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1rem 0 1.5rem;
+    line-height: 1.5;
+  }
+
+  pre code {
+    background: none;
+    color: #e0e0e0;
+    padding: 0;
+    font-size: 0.85rem;
+  }
+
+  /* Syntax highlighting */
+  .kw { color: #c792ea; }
+  .str { color: #c3e88d; }
+  .cm { color: #6a6a8a; }
+  .key { color: #4fc3f7; }
+  .val { color: #f78c6c; }
+  .fn { color: #82aaff; }
+  .op { color: #89ddff; }
+  .cb { color: #ffcb6b; }
+  .sh-cmd { color: #c3e88d; }
+  .sh-flag { color: #f78c6c; }
+  .sh-str { color: #c3e88d; }
+
+  /* Task sections */
+  .task-header {
+    background: #22223a;
+    border: 1px solid #3a3a5c;
+    border-left: 4px solid #4fc3f7;
+    border-radius: 0 6px 6px 0;
+    padding: 0.8rem 1rem;
+    margin: 1.5rem 0 1rem;
+  }
+
+  .task-header p {
+    margin: 0.3rem 0;
+    font-size: 0.9rem;
+  }
+
+  /* Strong */
+  strong { color: #e8e8f0; }
+
+  /* Emphasis */
+  em { color: #b0b0c8; font-style: italic; }
+
+  /* Footer */
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #2d2d44;
+    text-align: center;
+    color: #6a6a8a;
+    font-size: 0.85rem;
+  }
+
+  footer strong { color: #4fc3f7; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    nav.sidebar {
+      transform: translateX(-100%);
+      width: 260px;
+    }
+
+    nav.sidebar.open {
+      transform: translateX(0);
+    }
+
+    .nav-toggle { display: block; }
+
+    main {
+      margin-left: 0;
+      width: 100%;
+      padding: 2rem 1.5rem 3rem;
+    }
+  }
+
+  @media (max-width: 600px) {
+    main { padding: 1.5rem 1rem 2rem; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+    table { font-size: 0.8rem; }
+    th, td { padding: 0.4rem 0.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<button class="nav-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')" aria-label="Toggle navigation">&#9776; TOC</button>
+
+<nav class="sidebar">
+  <h2>Table of Contents</h2>
+  <ul>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#file-map">File Map</a></li>
+    <li><a href="#task1">Task 1: SKILL.md</a></li>
+    <li><a href="#task2">Task 2: mapping-guide.md</a></li>
+    <li><a href="#task3">Task 3: steering-template.md</a></li>
+    <li><a href="#task4">Task 4: agent-template.md</a></li>
+    <li><a href="#task5">Task 5: hook-template.md</a></li>
+    <li><a href="#task6">Task 6: skill-template.md</a></li>
+    <li><a href="#task7">Task 7: mcp-config-template.md</a></li>
+    <li><a href="#task8">Task 8: Update INDEX.md</a></li>
+    <li><a href="#task9">Task 9: HTML Documentation</a></li>
+    <li><a href="#execution-order">Execution Order</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<h1>Claude-to-Kiro Implementation Plan</h1>
+
+<blockquote>
+  <strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+
+<p><strong>Goal:</strong> Build the complete claude-to-kiro skill &mdash; SKILL.md and six reference templates &mdash; so it can convert Claude Code configurations into equivalent Kiro IDE/CLI configurations.</p>
+
+<p><strong>Architecture:</strong> Documentation-only skill following the repo&rsquo;s existing convention: one SKILL.md containing the core conversion workflow, six reference templates in <code>references/</code> covering each Kiro output format. No executable code &mdash; the skill guides Claude&rsquo;s behaviour through structured markdown. Mirrors the structure of the sibling <code>claude-to-amazonq</code> skill.</p>
+
+<p><strong>Tech Stack:</strong> Markdown only. No build system, no tests, no dependencies.</p>
+
+<p><strong>Spec:</strong> <code>claude-to-kiro/docs/claude-to-kiro-design.md</code></p>
+
+<p><strong>Reference for structure:</strong> <code>claude-to-amazonq/skills/claude-to-amazonq/</code> (sibling skill to mirror)</p>
+
+<hr>
+
+<h2 id="file-map">File Map</h2>
+
+<table>
+  <thead>
+    <tr><th>Action</th><th>File</th><th>Responsibility</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Create</td><td><code>claude-to-kiro/skills/claude-to-kiro/SKILL.md</code></td><td>Core conversion workflow &mdash; routing, classification, four workflows, output modes, migration report</td></tr>
+    <tr><td>Create</td><td><code>claude-to-kiro/skills/claude-to-kiro/references/mapping-guide.md</code></td><td>Complete Claude &rarr; Kiro concept mapping, classification signals, tool name table, naming conventions</td></tr>
+    <tr><td>Create</td><td><code>claude-to-kiro/skills/claude-to-kiro/references/steering-template.md</code></td><td><code>.kiro/steering/</code> format spec &mdash; frontmatter, inclusion modes, conversion examples</td></tr>
+    <tr><td>Create</td><td><code>claude-to-kiro/skills/claude-to-kiro/references/agent-template.md</code></td><td><code>.kiro/agents/</code> markdown config format &mdash; all fields, conversion from Claude plugins/subagents</td></tr>
+    <tr><td>Create</td><td><code>claude-to-kiro/skills/claude-to-kiro/references/hook-template.md</code></td><td>Kiro CLI + IDE hook format &mdash; event names, matchers, conversion from Claude hooks</td></tr>
+    <tr><td>Create</td><td><code>claude-to-kiro/skills/claude-to-kiro/references/skill-template.md</code></td><td><code>.kiro/skills/</code> format &mdash; near-1:1 mapping, what changes (tool names, location, frontmatter)</td></tr>
+    <tr><td>Create</td><td><code>claude-to-kiro/skills/claude-to-kiro/references/mcp-config-template.md</code></td><td><code>.kiro/settings/mcp.json</code> translation &mdash; schema comparison, path mapping, conversion example</td></tr>
+    <tr><td>Modify</td><td><code>INDEX.md</code></td><td>Add claude-to-kiro entry with description and usage examples</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- Task 1 -->
+<h2 id="task1">Task 1: SKILL.md &mdash; Core Conversion Workflow</h2>
+
+<p>The SKILL.md is the primary file Claude reads when the skill is invoked. It defines the conversion workflow, content classification, and output structure. Mirror the structure of <code>claude-to-amazonq/skills/claude-to-amazonq/SKILL.md</code> but with Kiro targets.</p>
+
+<div class="task-header">
+  <p><strong>Files:</strong></p>
+  <p>Create: <code>claude-to-kiro/skills/claude-to-kiro/SKILL.md</code></p>
+  <p>Reference: <code>claude-to-amazonq/skills/claude-to-amazonq/SKILL.md</code> (structural template)</p>
+  <p>Reference: <code>claude-to-kiro/docs/claude-to-kiro-design.md</code> (design spec &mdash; sections &ldquo;Content Classification&rdquo;, &ldquo;Conversion Workflows&rdquo;, &ldquo;Migration Report&rdquo;)</p>
+</div>
+
+<p><strong>Content requirements:</strong></p>
+<ul>
+  <li>YAML frontmatter: <code>name: claude-to-kiro</code>, <code>description</code> with trigger phrases (port to Kiro, convert skills to Kiro, migrate config to Kiro, export to Kiro, translate CLAUDE.md to steering, convert hooks to Kiro, convert plugin to Kiro), <code>version: 0.1.0</code></li>
+  <li>Structural differences table: Claude Code &rarr; Kiro mapping (CLAUDE.md &rarr; steering, skills &rarr; skills, hooks &rarr; hooks, MCP &rarr; MCP, plugins &rarr; agents+steering+skills+MCP, subagents &rarr; custom agents)</li>
+  <li>Content classification section with six routing destinations (steering, skills, agents, hooks, AGENTS.md, migration report)</li>
+  <li>AGENTS.md routing: CLAUDE.md agent directives &rarr; <code>AGENTS.md</code> in project root (always included by Kiro)</li>
+  <li>Slash command routing: Claude slash commands &rarr; <code>.kiro/steering/&lt;name&gt;.md</code> with <code>inclusion: manual</code></li>
+  <li>Steering inclusion mode signals (fileMatch, manual, auto, always default)</li>
+  <li>Ambiguous content handling: flag in migration report when content could map to multiple inclusion modes</li>
+  <li>Four conversion workflows (single skill, full project, global config, plugin-to-power) &mdash; reference the design doc steps</li>
+  <li>Output modes (staging to <code>kiro-export/</code>, direct to <code>.kiro/</code>)</li>
+  <li>Reference callouts: &ldquo;Consult <code>references/&lt;name&gt;.md</code> for...&rdquo; for each of the six templates</li>
+  <li>Migration report structure: five sections (Successfully Ported, Partial, Not Portable, File Mapping Table, Enhancement Opportunities)</li>
+</ul>
+
+<ul>
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 1: Read the amazonq SKILL.md for structural reference</strong><br>
+  Read <code>claude-to-amazonq/skills/claude-to-amazonq/SKILL.md</code> to understand the section ordering and formatting conventions used in the sibling skill.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 2: Read the design doc sections needed for SKILL.md content</strong><br>
+  Read <code>claude-to-kiro/docs/claude-to-kiro-design.md</code> &mdash; specifically the &ldquo;Content Classification&rdquo;, &ldquo;Conversion Workflows&rdquo;, &ldquo;Migration Report&rdquo;, and &ldquo;Complete Concept Mapping&rdquo; sections.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 3: Write SKILL.md</strong><br>
+  Create the file at <code>claude-to-kiro/skills/claude-to-kiro/SKILL.md</code>. Follow the amazonq SKILL.md structure but with Kiro targets. Include all content from the design spec&rsquo;s routing table, classification signals, four workflows, output modes, and reference callouts.</li>
+</ul>
+
+<p>Key differences from the amazonq SKILL.md:</p>
+<ul>
+  <li>Routing destinations are steering/skills/agents/hooks/report (not rules/prompts/agents/MCP/report)</li>
+  <li>Add steering inclusion mode classification section</li>
+  <li>Four workflows instead of three (add plugin-to-power)</li>
+  <li>Migration report has five sections instead of four (add Enhancement Opportunities)</li>
+  <li>Reference callouts point to six templates instead of five</li>
+</ul>
+
+<ul>
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 4: Verify SKILL.md completeness</strong><br>
+  Check that SKILL.md has valid YAML frontmatter with name, description, version; references all six template files in <code>references/</code>; covers all four conversion workflows; documents the five-section migration report format; includes the steering inclusion mode classification.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 5: Commit</strong></li>
+</ul>
+
+<pre><code><span class="sh-cmd">git add</span> claude-to-kiro/skills/claude-to-kiro/SKILL.md
+<span class="sh-cmd">git commit</span> <span class="sh-flag">-m</span> <span class="sh-str">"Add claude-to-kiro SKILL.md with core conversion workflow
+
+Co-Authored-By: DT74 - Daren Threadingham &lt;darent74@gmail.com&gt;
+Co-Authored-By: Claude Opus 4.6 (1M context) &lt;noreply@anthropic.com&gt;"</span></code></pre>
+
+<hr>
+
+<!-- Task 2 -->
+<h2 id="task2">Task 2: mapping-guide.md &mdash; Complete Concept Mapping</h2>
+
+<p>The mapping guide is the most comprehensive reference file. It contains the full Claude &rarr; Kiro concept mapping, classification rules, tool name translation table, priority mapping, and naming conventions.</p>
+
+<div class="task-header">
+  <p><strong>Files:</strong></p>
+  <p>Create: <code>claude-to-kiro/skills/claude-to-kiro/references/mapping-guide.md</code></p>
+  <p>Reference: <code>claude-to-amazonq/skills/claude-to-amazonq/references/mapping-guide.md</code> (structural template)</p>
+  <p>Reference: <code>claude-to-kiro/docs/claude-to-kiro-design.md</code> (sections &ldquo;Complete Concept Mapping&rdquo;, &ldquo;Tool Name Translation&rdquo;, &ldquo;Content Classification&rdquo;)</p>
+</div>
+
+<p><strong>Content requirements:</strong></p>
+<ul>
+  <li>Configuration files mapping table (CLAUDE.md &rarr; steering, global CLAUDE.md &rarr; global steering, settings.json &rarr; mcp.json, plugin.json &rarr; agents+steering, skills &rarr; skills, AGENTS.md &rarr; AGENTS.md)</li>
+  <li>Feature mapping table with mapping quality ratings (Direct, Better, Good, Similar, Partial)</li>
+  <li>Content classification rules with signal patterns for each routing destination</li>
+  <li>Steering inclusion mode classification signals (fileMatch, manual, auto, always)</li>
+  <li>Tool name translation table (Read &rarr; read/fs_read, Write &rarr; write/fs_write, Edit &rarr; edit/fs_edit, Bash &rarr; shell/shell_execute, Glob &rarr; list/fs_list, Grep &rarr; search/fs_search, WebFetch &rarr; web_fetch, WebSearch &rarr; web_search, Agent &rarr; .kiro/agents/)</li>
+  <li>Tool name mapping comment header template</li>
+  <li>Priority mapping (MUST/NEVER/CRITICAL &rarr; Critical, Always/Never &rarr; High, Prefer/Should &rarr; Medium, Consider/May &rarr; Low) &mdash; used when converting CLAUDE.md rules to steering files</li>
+  <li>Naming conventions (Claude kebab-case &rarr; Kiro kebab-case, SKILL.md &rarr; SKILL.md, CLAUDE.md &rarr; steering files)</li>
+</ul>
+
+<ul>
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 1: Read the amazonq mapping guide for structural reference</strong><br>
+  Read <code>claude-to-amazonq/skills/claude-to-amazonq/references/mapping-guide.md</code>.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 2: Write mapping-guide.md</strong><br>
+  Create <code>claude-to-kiro/skills/claude-to-kiro/references/mapping-guide.md</code> following the amazonq guide&rsquo;s section ordering but with Kiro-specific content. Include all tables and classification rules from the design spec.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 3: Verify mapping-guide.md completeness</strong><br>
+  Check that the guide includes: config file mapping, feature mapping with quality ratings, classification rules for all five destinations, steering inclusion mode signals, full tool name table with comment header template, priority mapping, naming conventions.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 4: Commit</strong></li>
+</ul>
+
+<pre><code><span class="sh-cmd">git add</span> claude-to-kiro/skills/claude-to-kiro/references/mapping-guide.md
+<span class="sh-cmd">git commit</span> <span class="sh-flag">-m</span> <span class="sh-str">"Add mapping guide with Claude-to-Kiro concept mapping
+
+Co-Authored-By: DT74 - Daren Threadingham &lt;darent74@gmail.com&gt;
+Co-Authored-By: Claude Opus 4.6 (1M context) &lt;noreply@anthropic.com&gt;"</span></code></pre>
+
+<hr>
+
+<!-- Task 3 -->
+<h2 id="task3">Task 3: steering-template.md &mdash; Kiro Steering File Format</h2>
+
+<p>This template documents the <code>.kiro/steering/</code> file format &mdash; the primary destination for CLAUDE.md content. It&rsquo;s the Kiro equivalent of the amazonq <code>rules-template.md</code> but richer because of inclusion modes.</p>
+
+<div class="task-header">
+  <p><strong>Files:</strong></p>
+  <p>Create: <code>claude-to-kiro/skills/claude-to-kiro/references/steering-template.md</code></p>
+  <p>Reference: <code>claude-to-amazonq/skills/claude-to-amazonq/references/rules-template.md</code> (structural template)</p>
+  <p>Reference: <code>claude-to-kiro/docs/claude-to-kiro-design.md</code> (sections &ldquo;Steering Inclusion Mode Classification&rdquo;, &ldquo;For Users New to Kiro: Where Your Project Rules Live&rdquo;)</p>
+</div>
+
+<p><strong>Content requirements:</strong></p>
+<ul>
+  <li>Overview: what steering files are and how they differ from CLAUDE.md</li>
+  <li>File locations: <code>.kiro/steering/</code> (workspace) and <code>~/.kiro/steering/</code> (global), workspace takes precedence</li>
+  <li>YAML frontmatter format with all four inclusion modes:
+    <ul>
+      <li><code>inclusion: always</code> (default) &mdash; loaded every interaction</li>
+      <li><code>inclusion: fileMatch</code> + <code>fileMatchPattern: "**/*.tsx"</code> &mdash; loaded when working with matching files</li>
+      <li><code>inclusion: manual</code> &mdash; loaded on-demand via <code>/</code> or <code>#steering-name</code></li>
+      <li><code>inclusion: auto</code> + <code>name</code> + <code>description</code> &mdash; loaded when request matches description</li>
+    </ul>
+  </li>
+  <li>Foundational templates Kiro can generate: <code>product.md</code>, <code>tech.md</code>, <code>structure.md</code></li>
+  <li>File references syntax: <code>#[[file:path/to/file]]</code></li>
+  <li>Conversion example 1: CLAUDE.md core rules &rarr; steering with <code>inclusion: always</code></li>
+  <li>Conversion example 2: CLAUDE.md file-type rules &rarr; steering with <code>inclusion: fileMatch</code></li>
+  <li>Conversion example 3: CLAUDE.md workflow &rarr; steering with <code>inclusion: manual</code></li>
+  <li>Conversion example 4: Claude skill too small for full skill &rarr; steering with <code>inclusion: auto</code></li>
+  <li>Best practices: one concern per file, keep under 2000 words, use fileMatch to reduce context, set appropriate inclusion mode</li>
+</ul>
+
+<ul>
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 1: Read the amazonq rules template for structural reference</strong><br>
+  Read <code>claude-to-amazonq/skills/claude-to-amazonq/references/rules-template.md</code>.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 2: Write steering-template.md</strong><br>
+  Create <code>claude-to-kiro/skills/claude-to-kiro/references/steering-template.md</code>. Follow the amazonq template&rsquo;s structure (overview, file location, format, examples, best practices) but with steering-specific content. Include all four inclusion modes with frontmatter examples and four conversion examples showing different modes.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 3: Verify steering-template.md completeness</strong><br>
+  Check: all four inclusion modes documented with frontmatter syntax, both workspace and global locations, at least four conversion examples (one per mode), best practices section, file reference syntax.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 4: Commit</strong></li>
+</ul>
+
+<pre><code><span class="sh-cmd">git add</span> claude-to-kiro/skills/claude-to-kiro/references/steering-template.md
+<span class="sh-cmd">git commit</span> <span class="sh-flag">-m</span> <span class="sh-str">"Add steering template with inclusion modes and conversion examples
+
+Co-Authored-By: DT74 - Daren Threadingham &lt;darent74@gmail.com&gt;
+Co-Authored-By: Claude Opus 4.6 (1M context) &lt;noreply@anthropic.com&gt;"</span></code></pre>
+
+<hr>
+
+<!-- Task 4 -->
+<h2 id="task4">Task 4: agent-template.md &mdash; Kiro Custom Agent Format</h2>
+
+<p>This template documents the <code>.kiro/agents/</code> markdown config format &mdash; the destination for Claude plugins and subagent definitions.</p>
+
+<div class="task-header">
+  <p><strong>Files:</strong></p>
+  <p>Create: <code>claude-to-kiro/skills/claude-to-kiro/references/agent-template.md</code></p>
+  <p>Reference: <code>claude-to-amazonq/skills/claude-to-amazonq/references/custom-agent-template.md</code> (structural template)</p>
+  <p>Reference: <code>claude-to-kiro/docs/claude-to-kiro-design.md</code> (sections &ldquo;Workflow 4: Plugin-to-Power Bundle&rdquo;, &ldquo;Subagents: Now Full Custom Agents&rdquo;)</p>
+</div>
+
+<p><strong>Content requirements:</strong></p>
+<ul>
+  <li>Overview: what Kiro custom agents are and how they differ from Claude plugins/subagents</li>
+  <li>File locations: <code>.kiro/agents/</code> (workspace) and <code>~/.kiro/agents/</code> (global)</li>
+  <li>Full configuration reference with all fields:
+    <ul>
+      <li><code>name</code>, <code>description</code> &mdash; agent identity</li>
+      <li><code>prompt</code> &mdash; system prompt (inline string or <code>file://</code> URI)</li>
+      <li><code>model</code> &mdash; model ID (e.g., <code>claude-sonnet-4</code>)</li>
+      <li><code>tools</code> &mdash; array: <code>"read"</code>, <code>"write"</code>, <code>"shell"</code>, <code>"aws"</code>, <code>"@server_name"</code>, <code>"*"</code></li>
+      <li><code>allowedTools</code> &mdash; tools that run without permission prompts (glob support)</li>
+      <li><code>toolsSettings</code> &mdash; per-tool config: <code>allowedPaths</code>, <code>allowedCommands</code>, <code>deniedCommands</code></li>
+      <li><code>mcpServers</code> &mdash; MCP servers available to this agent</li>
+      <li><code>includeMcpJson</code> &mdash; boolean: inherit workspace/global MCP configs</li>
+      <li><code>resources</code> &mdash; array of <code>file://</code>, <code>skill://</code>, or <code>knowledgeBase</code> objects</li>
+      <li><code>hooks</code> &mdash; object with trigger arrays (<code>agentSpawn</code>, <code>preToolUse</code>, <code>postToolUse</code>, <code>stop</code>)</li>
+      <li><code>toolAliases</code> &mdash; remap tool names</li>
+      <li><code>keyboardShortcut</code> &mdash; quick-switch shortcut (IDE only)</li>
+      <li><code>welcomeMessage</code> &mdash; displayed on agent activation</li>
+    </ul>
+  </li>
+  <li>Conversion example 1: Claude plugin &rarr; Kiro agent (plugin.json &rarr; agent markdown)</li>
+  <li>Conversion example 2: Claude subagent definition &rarr; Kiro custom agent</li>
+  <li>What cannot be converted: ephemeral subagent spawning patterns, inline agent definitions</li>
+  <li>Best practices: one domain per agent, use resources for context, restrict tools, name clearly</li>
+</ul>
+
+<ul>
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 1: Read the amazonq custom agent template for structural reference</strong><br>
+  Read <code>claude-to-amazonq/skills/claude-to-amazonq/references/custom-agent-template.md</code>.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 2: Write agent-template.md</strong><br>
+  Create <code>claude-to-kiro/skills/claude-to-kiro/references/agent-template.md</code>. Include the full configuration reference, two conversion examples, and best practices.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 3: Verify agent-template.md completeness</strong><br>
+  Check: all 14 agent config fields documented, file locations for workspace and global, two conversion examples, non-portable items listed, best practices section.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 4: Commit</strong></li>
+</ul>
+
+<pre><code><span class="sh-cmd">git add</span> claude-to-kiro/skills/claude-to-kiro/references/agent-template.md
+<span class="sh-cmd">git commit</span> <span class="sh-flag">-m</span> <span class="sh-str">"Add agent template with Kiro custom agent config reference
+
+Co-Authored-By: DT74 - Daren Threadingham &lt;darent74@gmail.com&gt;
+Co-Authored-By: Claude Opus 4.6 (1M context) &lt;noreply@anthropic.com&gt;"</span></code></pre>
+
+<hr>
+
+<!-- Task 5 -->
+<h2 id="task5">Task 5: hook-template.md &mdash; Kiro Hook Format</h2>
+
+<p>This template is entirely new &mdash; the amazonq skill has no equivalent because hooks were &ldquo;not portable.&rdquo; For Kiro, hooks are a direct mapping.</p>
+
+<div class="task-header">
+  <p><strong>Files:</strong></p>
+  <p>Create: <code>claude-to-kiro/skills/claude-to-kiro/references/hook-template.md</code></p>
+  <p>Reference: <code>claude-to-kiro/docs/claude-to-kiro-design.md</code> (sections &ldquo;Hooks: Same Events, Different Format&rdquo;, &ldquo;Tool Name Translation&rdquo;)</p>
+</div>
+
+<p><strong>Content requirements:</strong></p>
+<ul>
+  <li>Overview: what Kiro hooks are and the two types (CLI agent hooks, IDE file-event hooks)</li>
+  <li>CLI hook format:
+    <ul>
+      <li>Event types: <code>agentSpawn</code>, <code>userPromptSubmit</code>, <code>preToolUse</code>, <code>postToolUse</code>, <code>stop</code></li>
+      <li>Configuration within agent files (hooks object with event arrays)</li>
+      <li>Matcher field: canonical names (<code>fs_read</code>), aliases (<code>read</code>), MCP patterns (<code>@git/status</code>), wildcards (<code>*</code>)</li>
+      <li>Hook receives JSON via STDIN: event name, cwd, tool details</li>
+      <li>Exit codes: 0 = success, 2 = block tool (preToolUse only)</li>
+      <li><code>timeout_ms</code> (default 30s) and <code>cache_ttl_seconds</code></li>
+    </ul>
+  </li>
+  <li>IDE hook format:
+    <ul>
+      <li>Triggers: file saved, created, deleted; user prompt submit; agent stop; manual trigger</li>
+      <li>Actions: &ldquo;Ask Kiro&rdquo; (agent prompt) or &ldquo;Run Command&rdquo; (shell command)</li>
+      <li>File pattern matching with glob patterns</li>
+      <li>Configured via UI or natural language</li>
+    </ul>
+  </li>
+  <li>Event name translation table: Claude <code>PreToolUse</code> &rarr; Kiro <code>preToolUse</code>, <code>PostToolUse</code> &rarr; <code>postToolUse</code>, <code>Stop</code> &rarr; <code>stop</code></li>
+  <li>Tool matcher translation: Claude <code>Bash</code> &rarr; Kiro <code>shell_execute</code> or <code>shell</code>, etc.</li>
+  <li>Conversion example 1: Claude PreToolUse hook blocking <code>rm -rf</code> &rarr; Kiro CLI preToolUse hook</li>
+  <li>Conversion example 2: Claude PostToolUse hook &rarr; Kiro CLI postToolUse hook</li>
+  <li>What cannot be converted: IDE file-event hooks (no Claude source), SessionStart/SessionEnd hooks (different Kiro event model)</li>
+  <li>Best practices: scope hooks to agents, use specific matchers over wildcards, keep timeouts reasonable</li>
+</ul>
+
+<ul>
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 1: Write hook-template.md</strong><br>
+  Create <code>claude-to-kiro/skills/claude-to-kiro/references/hook-template.md</code>. This has no amazonq equivalent to reference &mdash; write from the design spec and Kiro documentation.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 2: Verify hook-template.md completeness</strong><br>
+  Check: both CLI and IDE hook types documented, all five CLI event types enumerated, event name translation table, tool matcher translation, two conversion examples, non-portable items listed, best practices.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 3: Commit</strong></li>
+</ul>
+
+<pre><code><span class="sh-cmd">git add</span> claude-to-kiro/skills/claude-to-kiro/references/hook-template.md
+<span class="sh-cmd">git commit</span> <span class="sh-flag">-m</span> <span class="sh-str">"Add hook template with CLI and IDE hook format and conversion examples
+
+Co-Authored-By: DT74 - Daren Threadingham &lt;darent74@gmail.com&gt;
+Co-Authored-By: Claude Opus 4.6 (1M context) &lt;noreply@anthropic.com&gt;"</span></code></pre>
+
+<hr>
+
+<!-- Task 6 -->
+<h2 id="task6">Task 6: skill-template.md &mdash; Kiro Skill Format (Near-1:1 Mapping)</h2>
+
+<p>This template documents the near-identical skill format and what needs changing.</p>
+
+<div class="task-header">
+  <p><strong>Files:</strong></p>
+  <p>Create: <code>claude-to-kiro/skills/claude-to-kiro/references/skill-template.md</code></p>
+  <p>Reference: <code>claude-to-kiro/docs/claude-to-kiro-design.md</code> (sections &ldquo;Skills: Almost Identical&rdquo;, &ldquo;Workflow 1: Single Skill Conversion&rdquo;)</p>
+</div>
+
+<p><strong>Content requirements:</strong></p>
+<ul>
+  <li>Overview: Kiro adopted the same SKILL.md standard as Claude Code</li>
+  <li>File locations: <code>.kiro/skills/&lt;name&gt;/</code> (workspace) and <code>~/.kiro/skills/&lt;name&gt;/</code> (global)</li>
+  <li>Directory structure: <code>SKILL.md</code> (required), <code>scripts/</code> (optional), <code>references/</code> (optional)</li>
+  <li>YAML frontmatter: <code>name</code> (required), <code>description</code> (required) &mdash; same fields as Claude</li>
+  <li>Progressive loading: only name/description loaded at startup, full content on demand &mdash; same as Claude</li>
+  <li>What changes during conversion:
+    <ol>
+      <li>Tool names (Read &rarr; read, Bash &rarr; shell, etc.)</li>
+      <li>File location (wherever stored &rarr; <code>.kiro/skills/&lt;name&gt;/</code>)</li>
+      <li>Any Claude-specific tool references in instructions</li>
+    </ol>
+  </li>
+  <li>What stays the same: frontmatter format, markdown body, references/ and scripts/ subdirectories, auto-triggering via description matching</li>
+  <li>Conversion example: Claude skill &rarr; Kiro skill (showing tool name translation and mapping comment header)</li>
+  <li>Best practices: keep descriptions specific for auto-triggering, use scripts/ for executable logic, keep references/ for output format templates</li>
+</ul>
+
+<ul>
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 1: Write skill-template.md</strong><br>
+  Create <code>claude-to-kiro/skills/claude-to-kiro/references/skill-template.md</code>.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 2: Verify skill-template.md completeness</strong><br>
+  Check: file locations, directory structure, frontmatter fields, what changes vs stays the same, conversion example with tool name translation, best practices.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 3: Commit</strong></li>
+</ul>
+
+<pre><code><span class="sh-cmd">git add</span> claude-to-kiro/skills/claude-to-kiro/references/skill-template.md
+<span class="sh-cmd">git commit</span> <span class="sh-flag">-m</span> <span class="sh-str">"Add skill template documenting near-1:1 SKILL.md mapping
+
+Co-Authored-By: DT74 - Daren Threadingham &lt;darent74@gmail.com&gt;
+Co-Authored-By: Claude Opus 4.6 (1M context) &lt;noreply@anthropic.com&gt;"</span></code></pre>
+
+<hr>
+
+<!-- Task 7 -->
+<h2 id="task7">Task 7: mcp-config-template.md &mdash; MCP Config Translation</h2>
+
+<p>The MCP config translation is the most mechanical conversion &mdash; same protocol, different file location and surrounding structure.</p>
+
+<div class="task-header">
+  <p><strong>Files:</strong></p>
+  <p>Create: <code>claude-to-kiro/skills/claude-to-kiro/references/mcp-config-template.md</code></p>
+  <p>Reference: <code>claude-to-amazonq/skills/claude-to-amazonq/references/mcp-config-template.md</code> (structural template)</p>
+  <p>Reference: <code>claude-to-kiro/docs/claude-to-kiro-design.md</code> (tool name translation, MCP config sections)</p>
+</div>
+
+<p><strong>Content requirements:</strong></p>
+<ul>
+  <li>Overview: both tools use MCP, same protocol, different file locations</li>
+  <li>Claude Code MCP config format (<code>~/.claude/settings.json</code> and <code>.claude/settings.json</code>)</li>
+  <li>Kiro MCP config format (<code>.kiro/settings/mcp.json</code> workspace, <code>~/.kiro/settings/mcp.json</code> global)</li>
+  <li>Translation steps:
+    <ol>
+      <li>Copy <code>mcpServers</code> object from Claude settings</li>
+      <li>Write to Kiro&rsquo;s <code>mcp.json</code> location</li>
+      <li>Adjust paths referencing <code>~/.claude/</code> to Kiro equivalents or absolute paths</li>
+      <li>Verify environment variables available in Kiro runtime</li>
+      <li>For remote servers: confirm URL accessibility</li>
+    </ol>
+  </li>
+  <li>Config location mapping table (global, project, legacy)</li>
+  <li>Conversion example: Claude settings.json &rarr; Kiro mcp.json (showing the direct copy + path adjustments)</li>
+  <li>Permissions handling: Claude&rsquo;s <code>permissions</code> block has no direct Kiro equivalent at MCP level &mdash; document workaround via agent <code>allowedTools</code> and <code>toolsSettings</code></li>
+  <li>Known differences table (config file name, permissions location, hot reload, legacy format)</li>
+  <li>Edge cases: Claude-specific MCP servers, authentication, path differences</li>
+</ul>
+
+<ul>
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 1: Read the amazonq MCP config template for structural reference</strong><br>
+  Read <code>claude-to-amazonq/skills/claude-to-amazonq/references/mcp-config-template.md</code>.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 2: Write mcp-config-template.md</strong><br>
+  Create <code>claude-to-kiro/skills/claude-to-kiro/references/mcp-config-template.md</code>. Follow the amazonq template structure but with Kiro file locations and any Kiro-specific differences.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 3: Verify mcp-config-template.md completeness</strong><br>
+  Check: both Claude and Kiro formats shown, translation steps, config location mapping, conversion example, permissions handling, known differences, edge cases.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 4: Commit</strong></li>
+</ul>
+
+<pre><code><span class="sh-cmd">git add</span> claude-to-kiro/skills/claude-to-kiro/references/mcp-config-template.md
+<span class="sh-cmd">git commit</span> <span class="sh-flag">-m</span> <span class="sh-str">"Add MCP config template for Claude-to-Kiro translation
+
+Co-Authored-By: DT74 - Daren Threadingham &lt;darent74@gmail.com&gt;
+Co-Authored-By: Claude Opus 4.6 (1M context) &lt;noreply@anthropic.com&gt;"</span></code></pre>
+
+<hr>
+
+<!-- Task 8 -->
+<h2 id="task8">Task 8: Update INDEX.md</h2>
+
+<p>Add the new skill to the repository&rsquo;s skill index.</p>
+
+<div class="task-header">
+  <p><strong>Files:</strong></p>
+  <p>Modify: <code>INDEX.md</code></p>
+  <p>Reference: existing INDEX.md entries for format</p>
+</div>
+
+<ul>
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 1: Read INDEX.md</strong><br>
+  Read <code>INDEX.md</code> to understand the current format and entries.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 2: Add claude-to-kiro entry</strong><br>
+  Add an entry following the existing format:
+    <ul>
+      <li>Skill name: <strong>claude-to-kiro</strong></li>
+      <li>Description: Converts Claude Code configurations into AWS Kiro IDE/CLI equivalents using signal-based content classification and tool name translation. Supports four conversion workflows: single skill, full project, global config, and plugin-to-power bundle.</li>
+      <li>Usage examples showing trigger phrases</li>
+    </ul>
+  </li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 3: Commit</strong></li>
+</ul>
+
+<pre><code><span class="sh-cmd">git add</span> INDEX.md
+<span class="sh-cmd">git commit</span> <span class="sh-flag">-m</span> <span class="sh-str">"Add claude-to-kiro to skill index
+
+Co-Authored-By: DT74 - Daren Threadingham &lt;darent74@gmail.com&gt;
+Co-Authored-By: Claude Opus 4.6 (1M context) &lt;noreply@anthropic.com&gt;"</span></code></pre>
+
+<hr>
+
+<!-- Task 9 -->
+<h2 id="task9">Task 9: Generate HTML Versions of Documentation</h2>
+
+<p>Generate styled HTML versions of the design document and plan for ease of reading and sharing. Use a dark theme consistent with the user&rsquo;s Cisco-themed documentation style.</p>
+
+<div class="task-header">
+  <p><strong>Files:</strong></p>
+  <p>Create: <code>claude-to-kiro/docs/claude-to-kiro-design.html</code></p>
+  <p>Create: <code>claude-to-kiro/docs/claude-to-kiro-plan.html</code></p>
+  <p>Source: <code>claude-to-kiro/docs/claude-to-kiro-design.md</code></p>
+  <p>Source: <code>claude-to-kiro/docs/claude-to-kiro-plan.md</code></p>
+</div>
+
+<p><strong>Content requirements:</strong></p>
+<ul>
+  <li>Dark-themed design with clean typography, professional appearance</li>
+  <li>Responsive layout that works on desktop and mobile</li>
+  <li>Syntax-highlighted code blocks (markdown, JSON, bash, YAML)</li>
+  <li>Proper rendering of all markdown tables, lists, and headings</li>
+  <li>Navigation sidebar or table of contents for quick jumping between sections</li>
+  <li>Attribution footer: &ldquo;Created by: DT74 &mdash; Daren Threadingham&rdquo;</li>
+  <li>Self-contained HTML (inline CSS, no external dependencies)</li>
+</ul>
+
+<ul>
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 1: Generate design doc HTML</strong><br>
+  Convert <code>claude-to-kiro/docs/claude-to-kiro-design.md</code> to a styled HTML document.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 2: Generate plan HTML</strong><br>
+  Convert <code>claude-to-kiro/docs/claude-to-kiro-plan.md</code> to a styled HTML document.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 3: Verify HTML renders correctly</strong><br>
+  Open both HTML files in a browser to verify tables render correctly, code blocks are syntax-highlighted, navigation works, and the dark theme is consistent.</li>
+
+  <li class="checkbox-item"><span class="cb-box"></span> <strong>Step 4: Commit</strong></li>
+</ul>
+
+<pre><code><span class="sh-cmd">git add</span> claude-to-kiro/docs/claude-to-kiro-design.html claude-to-kiro/docs/claude-to-kiro-plan.html
+<span class="sh-cmd">git commit</span> <span class="sh-flag">-m</span> <span class="sh-str">"Add styled HTML versions of design doc and plan for sharing
+
+Co-Authored-By: DT74 - Daren Threadingham &lt;darent74@gmail.com&gt;
+Co-Authored-By: Claude Opus 4.6 (1M context) &lt;noreply@anthropic.com&gt;"</span></code></pre>
+
+<hr>
+
+<h2 id="execution-order">Execution Order</h2>
+
+<p>Tasks 1&ndash;7 are independent of each other and can be executed in parallel.
+Task 8 (INDEX.md update) can run in parallel with any other task.
+Task 9 (HTML generation) depends on Tasks 1&ndash;8 being complete (needs final markdown content).</p>
+
+<p>Recommended execution: parallel dispatch, or batch as:</p>
+
+<ul>
+  <li><strong>Wave 1:</strong> Tasks 1&ndash;4 (SKILL.md, mapping guide, steering template, agent template)</li>
+  <li><strong>Wave 2:</strong> Tasks 5&ndash;8 (hook template, skill template, MCP config template, INDEX.md)</li>
+  <li><strong>Wave 3:</strong> Task 9 (HTML generation &mdash; after all markdown is finalised)</li>
+</ul>
+
+<footer>
+  <p>Created by: <strong>DT74 &mdash; Daren Threadingham</strong></p>
+</footer>
+
+</main>
+
+</body>
+</html>
